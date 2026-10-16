@@ -1,0 +1,734 @@
+/* ============================================================================
+   scrumit theme tokens
+   ----------------------------------------------------------------------------
+   Contract: a theme sets 24 raw variables. Everything else (status colours,
+   epic hues, soft tints, shadows) is derived once below, so a new theme is a
+   palette and nothing more.
+
+   Raw vars per theme
+     surfaces   --paper --panel --panel-2 --panel-3
+     text       --ink --ink-2 --ink-3 --ink-4
+     strokes    --line --line-2 --shadow-color
+     signal     --accent --on-accent --signal --warn --ok
+     hues       --p-red --p-orange --p-yellow --p-green
+                --p-cyan --p-blue --p-purple --p-pink
+
+   The rule that shapes this file: the chrome is achromatic, colour is data.
+   Greys carry the interface, the eight hues carry epics and statuses.
+   ========================================================================== */
+
+:root {
+  /* Type. Fraunces for display, Plex Mono for chrome, Plex Sans for prose. */
+  --f-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --f-prose: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Geometry. Nearly square: this is a drafting surface, not a card kit. */
+  --r-sm: 2px;
+  --r-md: 3px;
+  --r-lg: 5px;
+
+  /* Derived: epic hues are the eight theme hues in a fixed order, so an epic
+     keeps its colour family when you switch themes. */
+  --e1: var(--p-blue);
+  --e2: var(--p-cyan);
+  --e3: var(--p-orange);
+  --e4: var(--p-purple);
+  --e5: var(--p-green);
+  --e6: var(--p-pink);
+  --e7: var(--p-red);
+  --e8: var(--p-yellow);
+
+  /* Derived: status hues. */
+  --st-backlog: var(--ink-3);
+  --st-todo: var(--p-blue);
+  --st-doing: var(--p-orange);
+  --st-review: var(--p-purple);
+  --st-done: var(--p-green);
+
+  /* Derived: tints. */
+  --accent-soft: color-mix(in oklab, var(--accent) 14%, transparent);
+  --signal-soft: color-mix(in oklab, var(--signal) 15%, transparent);
+  --ok-soft: color-mix(in oklab, var(--ok) 15%, transparent);
+  --warn-soft: color-mix(in oklab, var(--warn) 16%, transparent);
+
+  --shadow:
+    0 1px 2px var(--shadow-color),
+    0 18px 44px -20px var(--shadow-color);
+  --ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+}
+
+/* --------------------------------------------------------------------------
+   scrumit — the house theme. Cool paper and ink, not cream and clay.
+   -------------------------------------------------------------------------- */
+:root,
+[data-theme='scrumit-light'] {
+  color-scheme: light;
+  --paper: #e8eaef;
+  --panel: #f7f8fa;
+  --panel-2: #eef0f4;
+  --panel-3: #e1e4ea;
+  --ink: #14161c;
+  --ink-2: #3d414d;
+  --ink-3: #6a7080;
+  --ink-4: #979dab;
+  --line: #d3d7df;
+  --line-2: #bfc4ce;
+  --shadow-color: rgb(20 22 28 / 0.18);
+  --accent: #2f3ab2;
+  --on-accent: #ffffff;
+  --signal: #b4341f;
+  --warn: #8a6100;
+  --ok: #1f7a4d;
+  --p-red: #b4341f;
+  --p-orange: #a6571a;
+  --p-yellow: #8a6100;
+  --p-green: #1f7a4d;
+  --p-cyan: #0e7c86;
+  --p-blue: #2f3ab2;
+  --p-purple: #6a3fb5;
+  --p-pink: #9b2c6f;
+}
+
+[data-theme='scrumit-dark'] {
+  color-scheme: dark;
+  --paper: #0f1116;
+  --panel: #161922;
+  --panel-2: #1c202a;
+  --panel-3: #232733;
+  --ink: #e7e9ef;
+  --ink-2: #b3b8c4;
+  --ink-3: #7c8291;
+  --ink-4: #5a6070;
+  --line: #242833;
+  --line-2: #323847;
+  --shadow-color: rgb(0 0 0 / 0.6);
+  --accent: #8ca0ff;
+  --on-accent: #10121a;
+  --signal: #ff7b6b;
+  --warn: #e3b341;
+  --ok: #5fd3a0;
+  --p-red: #ff8a75;
+  --p-orange: #e0a458;
+  --p-yellow: #ddc65a;
+  --p-green: #6fcf8b;
+  --p-cyan: #4fc1c9;
+  --p-blue: #8ca0ff;
+  --p-purple: #b79bf5;
+  --p-pink: #e887be;
+}
+
+/* --------------------------------------------------------------------------
+   Catppuccin — https://catppuccin.com
+   -------------------------------------------------------------------------- */
+[data-theme='catppuccin-latte'] {
+  color-scheme: light;
+  --paper: #e6e9ef;
+  --panel: #eff1f5;
+  --panel-2: #e6e9ef;
+  --panel-3: #dce0e8;
+  --ink: #4c4f69;
+  --ink-2: #5c5f77;
+  --ink-3: #8c8fa1;
+  --ink-4: #9ca0b0;
+  --line: #ccd0da;
+  --line-2: #bcc0cc;
+  --shadow-color: rgb(76 79 105 / 0.18);
+  --accent: #8839ef;
+  --on-accent: #eff1f5;
+  --signal: #d20f39;
+  --warn: #df8e1d;
+  --ok: #40a02b;
+  --p-red: #d20f39;
+  --p-orange: #fe640b;
+  --p-yellow: #df8e1d;
+  --p-green: #40a02b;
+  --p-cyan: #179299;
+  --p-blue: #1e66f5;
+  --p-purple: #8839ef;
+  --p-pink: #ea76cb;
+}
+
+[data-theme='catppuccin-frappe'] {
+  color-scheme: dark;
+  --paper: #292c3c;
+  --panel: #303446;
+  --panel-2: #414559;
+  --panel-3: #51576d;
+  --ink: #c6d0f5;
+  --ink-2: #b5bfe2;
+  --ink-3: #a5adce;
+  --ink-4: #838ba7;
+  --line: #414559;
+  --line-2: #51576d;
+  --shadow-color: rgb(0 0 0 / 0.45);
+  --accent: #ca9ee6;
+  --on-accent: #232634;
+  --signal: #e78284;
+  --warn: #e5c890;
+  --ok: #a6d189;
+  --p-red: #e78284;
+  --p-orange: #ef9f76;
+  --p-yellow: #e5c890;
+  --p-green: #a6d189;
+  --p-cyan: #81c8be;
+  --p-blue: #8caaee;
+  --p-purple: #ca9ee6;
+  --p-pink: #f4b8e4;
+}
+
+[data-theme='catppuccin-macchiato'] {
+  color-scheme: dark;
+  --paper: #1e2030;
+  --panel: #24273a;
+  --panel-2: #363a4f;
+  --panel-3: #494d64;
+  --ink: #cad3f5;
+  --ink-2: #b8c0e0;
+  --ink-3: #a5adcb;
+  --ink-4: #8087a2;
+  --line: #363a4f;
+  --line-2: #494d64;
+  --shadow-color: rgb(0 0 0 / 0.5);
+  --accent: #c6a0f6;
+  --on-accent: #181926;
+  --signal: #ed8796;
+  --warn: #eed49f;
+  --ok: #a6da95;
+  --p-red: #ed8796;
+  --p-orange: #f5a97f;
+  --p-yellow: #eed49f;
+  --p-green: #a6da95;
+  --p-cyan: #8bd5ca;
+  --p-blue: #8aadf4;
+  --p-purple: #c6a0f6;
+  --p-pink: #f5bde6;
+}
+
+[data-theme='catppuccin-mocha'] {
+  color-scheme: dark;
+  --paper: #181825;
+  --panel: #1e1e2e;
+  --panel-2: #313244;
+  --panel-3: #45475a;
+  --ink: #cdd6f4;
+  --ink-2: #bac2de;
+  --ink-3: #a6adc8;
+  --ink-4: #7f849c;
+  --line: #313244;
+  --line-2: #45475a;
+  --shadow-color: rgb(0 0 0 / 0.55);
+  --accent: #cba6f7;
+  --on-accent: #11111b;
+  --signal: #f38ba8;
+  --warn: #f9e2af;
+  --ok: #a6e3a1;
+  --p-red: #f38ba8;
+  --p-orange: #fab387;
+  --p-yellow: #f9e2af;
+  --p-green: #a6e3a1;
+  --p-cyan: #94e2d5;
+  --p-blue: #89b4fa;
+  --p-purple: #cba6f7;
+  --p-pink: #f5c2e7;
+}
+
+/* --------------------------------------------------------------------------
+   Kanagawa — https://github.com/rebelot/kanagawa.nvim
+   -------------------------------------------------------------------------- */
+[data-theme='kanagawa-lotus'] {
+  color-scheme: light;
+  --paper: #e7dba0;
+  --panel: #f2ecbc;
+  --panel-2: #e5ddb0;
+  --panel-3: #dcd5ac;
+  --ink: #545464;
+  --ink-2: #43436c;
+  --ink-3: #8a8980;
+  --ink-4: #a09cac;
+  --line: #d5cea3;
+  --line-2: #c7bd8e;
+  --shadow-color: rgb(84 84 100 / 0.2);
+  --accent: #4d699b;
+  --on-accent: #f2ecbc;
+  --signal: #c84053;
+  --warn: #de9800;
+  --ok: #6f894e;
+  --p-red: #c84053;
+  --p-orange: #cc6d00;
+  --p-yellow: #de9800;
+  --p-green: #6f894e;
+  --p-cyan: #597b75;
+  --p-blue: #4d699b;
+  --p-purple: #624c83;
+  --p-pink: #b35b79;
+}
+
+[data-theme='kanagawa-wave'] {
+  color-scheme: dark;
+  --paper: #16161d;
+  --panel: #1f1f28;
+  --panel-2: #2a2a37;
+  --panel-3: #363646;
+  --ink: #dcd7ba;
+  --ink-2: #c8c093;
+  --ink-3: #938aa9;
+  --ink-4: #727169;
+  --line: #2a2a37;
+  --line-2: #363646;
+  --shadow-color: rgb(0 0 0 / 0.55);
+  --accent: #7e9cd8;
+  --on-accent: #16161d;
+  --signal: #e46876;
+  --warn: #dca561;
+  --ok: #98bb6c;
+  --p-red: #e46876;
+  --p-orange: #ffa066;
+  --p-yellow: #e6c384;
+  --p-green: #98bb6c;
+  --p-cyan: #7aa89f;
+  --p-blue: #7e9cd8;
+  --p-purple: #957fb8;
+  --p-pink: #d27e99;
+}
+
+[data-theme='kanagawa-dragon'] {
+  color-scheme: dark;
+  --paper: #12120f;
+  --panel: #181616;
+  --panel-2: #282727;
+  --panel-3: #393836;
+  --ink: #c5c9c5;
+  --ink-2: #a6a69c;
+  --ink-3: #9e9b93;
+  --ink-4: #737c73;
+  --line: #282727;
+  --line-2: #393836;
+  --shadow-color: rgb(0 0 0 / 0.6);
+  --accent: #8ba4b0;
+  --on-accent: #12120f;
+  --signal: #c4746e;
+  --warn: #c4b28a;
+  --ok: #87a987;
+  --p-red: #c4746e;
+  --p-orange: #b98d7b;
+  --p-yellow: #c4b28a;
+  --p-green: #87a987;
+  --p-cyan: #8ea4a2;
+  --p-blue: #8ba4b0;
+  --p-purple: #8992a7;
+  --p-pink: #a292a3;
+}
+
+/* --------------------------------------------------------------------------
+   Gruvbox — https://github.com/morhetz/gruvbox
+   -------------------------------------------------------------------------- */
+[data-theme='gruvbox-light'] {
+  color-scheme: light;
+  --paper: #f2e5bc;
+  --panel: #fbf1c7;
+  --panel-2: #ebdbb2;
+  --panel-3: #d5c4a1;
+  --ink: #3c3836;
+  --ink-2: #504945;
+  --ink-3: #7c6f64;
+  --ink-4: #a89984;
+  --line: #d5c4a1;
+  --line-2: #bdae93;
+  --shadow-color: rgb(60 56 54 / 0.2);
+  --accent: #076678;
+  --on-accent: #fbf1c7;
+  --signal: #9d0006;
+  --warn: #b57614;
+  --ok: #79740e;
+  --p-red: #9d0006;
+  --p-orange: #af3a03;
+  --p-yellow: #b57614;
+  --p-green: #79740e;
+  --p-cyan: #427b58;
+  --p-blue: #076678;
+  --p-purple: #8f3f71;
+  --p-pink: #b16286;
+}
+
+[data-theme='gruvbox-dark'] {
+  color-scheme: dark;
+  --paper: #1d2021;
+  --panel: #282828;
+  --panel-2: #3c3836;
+  --panel-3: #504945;
+  --ink: #ebdbb2;
+  --ink-2: #d5c4a1;
+  --ink-3: #a89984;
+  --ink-4: #928374;
+  --line: #3c3836;
+  --line-2: #504945;
+  --shadow-color: rgb(0 0 0 / 0.55);
+  --accent: #83a598;
+  --on-accent: #1d2021;
+  --signal: #fb4934;
+  --warn: #fabd2f;
+  --ok: #b8bb26;
+  --p-red: #fb4934;
+  --p-orange: #fe8019;
+  --p-yellow: #fabd2f;
+  --p-green: #b8bb26;
+  --p-cyan: #8ec07c;
+  --p-blue: #83a598;
+  --p-purple: #d3869b;
+  --p-pink: #d3869b;
+}
+
+[data-theme='gruvbox-material'] {
+  color-scheme: dark;
+  --paper: #1d2021;
+  --panel: #282828;
+  --panel-2: #32302f;
+  --panel-3: #45403d;
+  --ink: #d4be98;
+  --ink-2: #c9b99a;
+  --ink-3: #a89984;
+  --ink-4: #928374;
+  --line: #3c3836;
+  --line-2: #504945;
+  --shadow-color: rgb(0 0 0 / 0.5);
+  --accent: #7daea3;
+  --on-accent: #1d2021;
+  --signal: #ea6962;
+  --warn: #d8a657;
+  --ok: #a9b665;
+  --p-red: #ea6962;
+  --p-orange: #e78a4e;
+  --p-yellow: #d8a657;
+  --p-green: #a9b665;
+  --p-cyan: #89b482;
+  --p-blue: #7daea3;
+  --p-purple: #d3869b;
+  --p-pink: #d3869b;
+}
+
+/* --------------------------------------------------------------------------
+   Everforest — https://github.com/sainnhe/everforest
+   -------------------------------------------------------------------------- */
+[data-theme='everforest-light'] {
+  color-scheme: light;
+  --paper: #f4f0d9;
+  --panel: #fdf6e3;
+  --panel-2: #efebd4;
+  --panel-3: #e0dcc7;
+  --ink: #5c6a72;
+  --ink-2: #708089;
+  --ink-3: #939f91;
+  --ink-4: #a4b0a0;
+  --line: #e0dcc7;
+  --line-2: #d0cdb8;
+  --shadow-color: rgb(92 106 114 / 0.2);
+  --accent: #3a94c5;
+  --on-accent: #fdf6e3;
+  --signal: #f85552;
+  --warn: #dfa000;
+  --ok: #8da101;
+  --p-red: #f85552;
+  --p-orange: #f57d26;
+  --p-yellow: #dfa000;
+  --p-green: #8da101;
+  --p-cyan: #35a77c;
+  --p-blue: #3a94c5;
+  --p-purple: #df69ba;
+  --p-pink: #d3869b;
+}
+
+[data-theme='everforest-dark'] {
+  color-scheme: dark;
+  --paper: #232a2e;
+  --panel: #2d353b;
+  --panel-2: #343f44;
+  --panel-3: #3d484d;
+  --ink: #d3c6aa;
+  --ink-2: #c5b98e;
+  --ink-3: #9da9a0;
+  --ink-4: #859289;
+  --line: #343f44;
+  --line-2: #3d484d;
+  --shadow-color: rgb(0 0 0 / 0.5);
+  --accent: #7fbbb3;
+  --on-accent: #232a2e;
+  --signal: #e67e80;
+  --warn: #dbbc7f;
+  --ok: #a7c080;
+  --p-red: #e67e80;
+  --p-orange: #e69875;
+  --p-yellow: #dbbc7f;
+  --p-green: #a7c080;
+  --p-cyan: #83c092;
+  --p-blue: #7fbbb3;
+  --p-purple: #d699b6;
+  --p-pink: #d699b6;
+}
+
+/* --------------------------------------------------------------------------
+   Nord — https://nordtheme.com
+   -------------------------------------------------------------------------- */
+[data-theme='nord'] {
+  color-scheme: dark;
+  --paper: #242933;
+  --panel: #2e3440;
+  --panel-2: #3b4252;
+  --panel-3: #434c5e;
+  --ink: #eceff4;
+  --ink-2: #e5e9f0;
+  --ink-3: #d8dee9;
+  --ink-4: #7b88a1;
+  --line: #3b4252;
+  --line-2: #4c566a;
+  --shadow-color: rgb(0 0 0 / 0.5);
+  --accent: #88c0d0;
+  --on-accent: #2e3440;
+  --signal: #bf616a;
+  --warn: #ebcb8b;
+  --ok: #a3be8c;
+  --p-red: #bf616a;
+  --p-orange: #d08770;
+  --p-yellow: #ebcb8b;
+  --p-green: #a3be8c;
+  --p-cyan: #8fbcbb;
+  --p-blue: #81a1c1;
+  --p-purple: #b48ead;
+  --p-pink: #b48ead;
+}
+
+/* --------------------------------------------------------------------------
+   Tokyo Night
+   -------------------------------------------------------------------------- */
+[data-theme='tokyo-night'] {
+  color-scheme: dark;
+  --paper: #16161e;
+  --panel: #1a1b26;
+  --panel-2: #24283b;
+  --panel-3: #2f334d;
+  --ink: #c0caf5;
+  --ink-2: #a9b1d6;
+  --ink-3: #737aa2;
+  --ink-4: #565f89;
+  --line: #24283b;
+  --line-2: #2f334d;
+  --shadow-color: rgb(0 0 0 / 0.55);
+  --accent: #7aa2f7;
+  --on-accent: #16161e;
+  --signal: #f7768e;
+  --warn: #e0af68;
+  --ok: #9ece6a;
+  --p-red: #f7768e;
+  --p-orange: #ff9e64;
+  --p-yellow: #e0af68;
+  --p-green: #9ece6a;
+  --p-cyan: #7dcfff;
+  --p-blue: #7aa2f7;
+  --p-purple: #bb9af7;
+  --p-pink: #c678dd;
+}
+
+/* --------------------------------------------------------------------------
+   Rosé Pine — https://rosepinetheme.com
+   -------------------------------------------------------------------------- */
+[data-theme='rose-pine'] {
+  color-scheme: dark;
+  --paper: #16141f;
+  --panel: #191724;
+  --panel-2: #1f1d2e;
+  --panel-3: #26233a;
+  --ink: #e0def4;
+  --ink-2: #c9c6dd;
+  --ink-3: #908caa;
+  --ink-4: #6e6a86;
+  --line: #26233a;
+  --line-2: #403d52;
+  --shadow-color: rgb(0 0 0 / 0.55);
+  --accent: #c4a7e7;
+  --on-accent: #191724;
+  --signal: #eb6f92;
+  --warn: #f6c177;
+  --ok: #95b1ac;
+  --p-red: #eb6f92;
+  --p-orange: #ebbcba;
+  --p-yellow: #f6c177;
+  --p-green: #95b1ac;
+  --p-cyan: #9ccfd8;
+  --p-blue: #31748f;
+  --p-purple: #c4a7e7;
+  --p-pink: #eb6f92;
+}
+
+[data-theme='rose-pine-moon'] {
+  color-scheme: dark;
+  --paper: #1f1d30;
+  --panel: #232136;
+  --panel-2: #2a273f;
+  --panel-3: #393552;
+  --ink: #e0def4;
+  --ink-2: #c9c6dd;
+  --ink-3: #908caa;
+  --ink-4: #6e6a86;
+  --line: #2a273f;
+  --line-2: #44415a;
+  --shadow-color: rgb(0 0 0 / 0.5);
+  --accent: #c4a7e7;
+  --on-accent: #232136;
+  --signal: #eb6f92;
+  --warn: #f6c177;
+  --ok: #95b1ac;
+  --p-red: #eb6f92;
+  --p-orange: #ea9a97;
+  --p-yellow: #f6c177;
+  --p-green: #95b1ac;
+  --p-cyan: #9ccfd8;
+  --p-blue: #3e8fb0;
+  --p-purple: #c4a7e7;
+  --p-pink: #eb6f92;
+}
+
+[data-theme='rose-pine-dawn'] {
+  color-scheme: light;
+  --paper: #f4ede8;
+  --panel: #faf4ed;
+  --panel-2: #fffaf3;
+  --panel-3: #f2e9e1;
+  --ink: #464261;
+  --ink-2: #575279;
+  --ink-3: #9893a5;
+  --ink-4: #797593;
+  --line: #e4dcd3;
+  --line-2: #dfdad9;
+  --shadow-color: rgb(70 66 97 / 0.16);
+  --accent: #907aa9;
+  --on-accent: #faf4ed;
+  --signal: #b4637a;
+  --warn: #ea9d34;
+  --ok: #6d8f89;
+  --p-red: #b4637a;
+  --p-orange: #d7827e;
+  --p-yellow: #ea9d34;
+  --p-green: #6d8f89;
+  --p-cyan: #56949f;
+  --p-blue: #286983;
+  --p-purple: #907aa9;
+  --p-pink: #b4637a;
+}
+
+/* --------------------------------------------------------------------------
+   Solarized — https://ethanschoonover.com/solarized
+   -------------------------------------------------------------------------- */
+[data-theme='solarized-light'] {
+  color-scheme: light;
+  --paper: #eee8d5;
+  --panel: #fdf6e3;
+  --panel-2: #eee8d5;
+  --panel-3: #e0d9c4;
+  --ink: #073642;
+  --ink-2: #586e75;
+  --ink-3: #93a1a1;
+  --ink-4: #839496;
+  --line: #ded8c4;
+  --line-2: #c9c2ad;
+  --shadow-color: rgb(7 54 66 / 0.16);
+  --accent: #268bd2;
+  --on-accent: #fdf6e3;
+  --signal: #dc322f;
+  --warn: #b58900;
+  --ok: #859900;
+  --p-red: #dc322f;
+  --p-orange: #cb4b16;
+  --p-yellow: #b58900;
+  --p-green: #859900;
+  --p-cyan: #2aa198;
+  --p-blue: #268bd2;
+  --p-purple: #6c71c4;
+  --p-pink: #d33682;
+}
+
+[data-theme='solarized-dark'] {
+  color-scheme: dark;
+  --paper: #002b36;
+  --panel: #073642;
+  --panel-2: #0b3f4c;
+  --panel-3: #15505f;
+  --ink: #eee8d5;
+  --ink-2: #93a1a1;
+  --ink-3: #839496;
+  --ink-4: #657b83;
+  --line: #0f4553;
+  --line-2: #15505f;
+  --shadow-color: rgb(0 0 0 / 0.5);
+  --accent: #2aa198;
+  --on-accent: #002b36;
+  --signal: #dc322f;
+  --warn: #b58900;
+  --ok: #859900;
+  --p-red: #dc322f;
+  --p-orange: #cb4b16;
+  --p-yellow: #b58900;
+  --p-green: #859900;
+  --p-cyan: #2aa198;
+  --p-blue: #268bd2;
+  --p-purple: #6c71c4;
+  --p-pink: #d33682;
+}
+
+/* --------------------------------------------------------------------------
+   One
+   -------------------------------------------------------------------------- */
+[data-theme='one-light'] {
+  color-scheme: light;
+  --paper: #eaeaeb;
+  --panel: #fafafa;
+  --panel-2: #f0f0f1;
+  --panel-3: #e3e3e5;
+  --ink: #383a42;
+  --ink-2: #50525a;
+  --ink-3: #a0a1a7;
+  --ink-4: #b6b7bd;
+  --line: #dcdcdE;
+  --line-2: #c8c8cc;
+  --shadow-color: rgb(56 58 66 / 0.16);
+  --accent: #4078f2;
+  --on-accent: #fafafa;
+  --signal: #e45649;
+  --warn: #c18401;
+  --ok: #50a14f;
+  --p-red: #e45649;
+  --p-orange: #986801;
+  --p-yellow: #c18401;
+  --p-green: #50a14f;
+  --p-cyan: #0184bc;
+  --p-blue: #4078f2;
+  --p-purple: #a626a4;
+  --p-pink: #c678dd;
+}
+
+[data-theme='one-dark'] {
+  color-scheme: dark;
+  --paper: #21252b;
+  --panel: #282c34;
+  --panel-2: #2f333d;
+  --panel-3: #3a3f4b;
+  --ink: #d7dae0;
+  --ink-2: #abb2bf;
+  --ink-3: #7f848e;
+  --ink-4: #5c6370;
+  --line: #2f333d;
+  --line-2: #3a3f4b;
+  --shadow-color: rgb(0 0 0 / 0.5);
+  --accent: #61afef;
+  --on-accent: #21252b;
+  --signal: #e06c75;
+  --warn: #e5c07b;
+  --ok: #98c379;
+  --p-red: #e06c75;
+  --p-orange: #d19a66;
+  --p-yellow: #e5c07b;
+  --p-green: #98c379;
+  --p-cyan: #56b6c2;
+  --p-blue: #61afef;
+  --p-purple: #c678dd;
+  --p-pink: #c678dd;
+}

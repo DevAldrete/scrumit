@@ -1,0 +1,466 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/fraunces';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/400-italic.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import './themes.css';
+
+/* Map the runtime theme tokens into Tailwind's namespace. `inline` is what
+   makes theme switching work: utilities emit var(--paper), not #e8eaef. */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-panel-3: var(--panel-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-signal: var(--signal);
+  --color-signal-soft: var(--signal-soft);
+  --color-warn: var(--warn);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-st-backlog: var(--st-backlog);
+  --color-st-todo: var(--st-todo);
+  --color-st-doing: var(--st-doing);
+  --color-st-review: var(--st-review);
+  --color-st-done: var(--st-done);
+
+  --font-display: var(--f-display);
+  --font-mono: var(--f-mono);
+  --font-prose: var(--f-prose);
+
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #app {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    /* The chrome is monospaced on purpose: this is an instrument, and the
+       reader is a person who reads diffs. Prose opts back into Plex Sans. */
+    font-family: var(--f-mono);
+    font-size: 13px;
+    line-height: 1.45;
+    font-feature-settings: 'zero' 1;
+    color: var(--ink);
+    background: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Scrollbars, in-theme. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-2) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-2);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-4);
+    background-clip: content-box;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* ---------------------------------------------------------------- surfaces */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+  }
+
+  .inset {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+  }
+
+  .pop {
+    background: var(--panel);
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow);
+  }
+
+  /* ------------------------------------------------------------------ labels */
+  /* A label that carries information rather than decorating a heading: it names
+     the field a value belongs to. Sentence case, never all-caps. */
+  .label {
+    font-size: 11px;
+    line-height: 1.3;
+    color: var(--ink-3);
+    letter-spacing: 0.01em;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  .prose-body {
+    font-family: var(--f-prose);
+    font-size: 14px;
+    line-height: 1.62;
+    color: var(--ink-2);
+    max-width: 68ch;
+  }
+  .prose-body > * + * {
+    margin-top: 0.75em;
+  }
+  .prose-body h1,
+  .prose-body h2,
+  .prose-body h3 {
+    font-family: var(--f-prose);
+    color: var(--ink);
+    font-weight: 600;
+    line-height: 1.25;
+    margin-top: 1.5em;
+  }
+  .prose-body h1 {
+    font-size: 1.35em;
+  }
+  .prose-body h2 {
+    font-size: 1.15em;
+  }
+  .prose-body h3 {
+    font-size: 1em;
+  }
+  .prose-body ul,
+  .prose-body ol {
+    padding-left: 1.35em;
+  }
+  .prose-body ul {
+    list-style: disc;
+  }
+  .prose-body ol {
+    list-style: decimal;
+  }
+  .prose-body li::marker {
+    color: var(--ink-4);
+  }
+  .prose-body a {
+    color: var(--accent);
+    text-underline-offset: 2px;
+  }
+  .prose-body code {
+    font-family: var(--f-mono);
+    font-size: 0.88em;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 0.05em 0.3em;
+  }
+  .prose-body pre {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 10px 12px;
+    overflow-x: auto;
+  }
+  .prose-body pre code {
+    background: none;
+    border: 0;
+    padding: 0;
+  }
+  .prose-body blockquote {
+    border-left: 2px solid var(--line-2);
+    padding-left: 12px;
+    color: var(--ink-3);
+  }
+  .prose-body hr {
+    border: 0;
+    border-top: 1px solid var(--line);
+  }
+  .prose-body input[type='checkbox'] {
+    margin-right: 0.4em;
+    accent-color: var(--accent);
+  }
+
+  /* ---------------------------------------------------------------- controls */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-sm);
+    background: var(--panel);
+    color: var(--ink);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease;
+  }
+  .btn:hover:not(:disabled) {
+    background: var(--panel-3);
+    border-color: var(--ink-4);
+  }
+  .btn:active:not(:disabled) {
+    background: var(--panel-2);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+    font-weight: 500;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--accent) 86%, var(--ink));
+    border-color: color-mix(in oklab, var(--accent) 86%, var(--ink));
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--ink-2);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--panel-2);
+    border-color: transparent;
+    color: var(--ink);
+  }
+
+  .btn-danger {
+    color: var(--signal);
+    border-color: color-mix(in oklab, var(--signal) 40%, var(--line-2));
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: var(--signal-soft);
+    border-color: var(--signal);
+  }
+
+  .btn-icon {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .field {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-sm);
+    padding: 5px 8px;
+    color: var(--ink);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 120ms ease;
+  }
+  .field::placeholder {
+    color: var(--ink-4);
+  }
+  .field:hover:not(:focus) {
+    border-color: var(--ink-4);
+  }
+  .field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+  textarea.field {
+    resize: vertical;
+    line-height: 1.5;
+  }
+
+  :where(select.field) {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+      linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position:
+      calc(100% - 14px) calc(50% - 1px),
+      calc(100% - 10px) calc(50% - 1px);
+    background-size:
+      4px 4px,
+      4px 4px;
+    background-repeat: no-repeat;
+    padding-right: 26px;
+  }
+
+  /* ------------------------------------------------------------------- bits */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 19px;
+    padding: 0 6px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-sm);
+    font-size: 11px;
+    line-height: 1;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  .chip-tint {
+    border-color: color-mix(in oklab, var(--tint) 45%, transparent);
+    background: color-mix(in oklab, var(--tint) 12%, transparent);
+    color: color-mix(in oklab, var(--tint) 78%, var(--ink));
+  }
+
+  .swatch {
+    width: 7px;
+    height: 7px;
+    border-radius: 1px;
+    background: var(--tint);
+    flex: none;
+  }
+
+  .hairline {
+    border: 0;
+    border-top: 1px solid var(--line);
+    margin: 0;
+  }
+
+  /* --------------------------------------------------------------- scrolls */
+  .scroll-x {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .scroll-y {
+    overflow-y: auto;
+  }
+
+  /* ----------------------------------------------------------------- board */
+  .col-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 56px;
+    padding: 6px;
+    border-radius: var(--r-sm);
+    transition: background-color 140ms ease;
+  }
+  .col-body[data-over='true'],
+  .col-body:has(> .sortable-ghost) {
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent);
+  }
+
+  .card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 8px 9px 7px;
+    cursor: default;
+    transition:
+      border-color 120ms ease,
+      background-color 120ms ease;
+  }
+  .card:hover {
+    border-color: var(--line-2);
+    background: var(--panel-2);
+  }
+  .card[data-selected='true'] {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .card:hover .card-grip,
+  .card:focus-within .card-grip {
+    opacity: 1;
+  }
+
+  .card-grip {
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .sortable-ghost {
+    opacity: 0.4;
+  }
+  .sortable-ghost > * {
+    visibility: hidden;
+  }
+  .sortable-chosen {
+    cursor: grabbing;
+  }
+  .sortable-fallback {
+    box-shadow: var(--shadow);
+    transform: rotate(1.2deg);
+  }
+}
+
+@utility drag-none {
+  -webkit-user-drag: none;
+  user-select: none;
+}

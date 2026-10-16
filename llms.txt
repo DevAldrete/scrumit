@@ -1,0 +1,394 @@
+# scrumit
+
+> scrumit is a local-first console for sprints, kanban boards and epics where the
+> artefacts are plain markdown files with YAML front-matter, versioned with git.
+> The repository is the database. This file is the complete specification of that
+> format, written so that a language model can create and move work by editing
+> files directly — no app, no API, no network.
+
+An agent that can read and write files needs nothing else. Every operation below
+is a file edit. Nothing is stored outside the repository, and nothing in the
+repository depends on scrumit continuing to exist.
+
+---
+
+## 1. Invariants
+
+These are the rules that keep the format honest. Violating any of them produces
+either a file a human cannot read or a diff a reviewer cannot trust.
+
+**MUST**
+
+- Write YAML front-matter as the very first thing in the file, delimited by
+  exactly `---` on its own line, opening and closing.
+- Keep `id` stable forever. It is the primary key, it appears in `blocked_by`,
+  `epic` and sprint references, and other people's commit messages.
+- Write dates as ISO `YYYY-MM-DD`. No times, no timezones, no local formats.
+- Derive the file path from the artefact's own fields (§5). The fields win.
+- Put a markdown file's `id` in front-matter before anything can reference it.
+- Set `updated` to today's date whenever you change an issue.
+- Preserve every front-matter key you do not understand, verbatim.
+
+**MUST NOT**
+
+- Reformat, reflow or re-indent the markdown body. Change only what you were
+  asked to change. A rewrite that touches prose is a defect, not a tidy-up.
+- Renumber or reuse ids. A new issue takes the next number up; a deleted issue's
+  number is retired.
+- Invent enum values. `status` and `type` accept the five and four values below
+  and nothing else.
+- Create a second file for the same `id`. If one exists, edit it.
+- Touch `.git/`. scrumit reads `.git/HEAD` and never writes to it.
+- Add build output, caches or `node_modules` paths to the artefacts.
+
+**GOOD TO KNOW**
+
+- If the folder a file sits in disagrees with its front-matter, the front-matter
+  wins. scrumit will move the file the next time it writes it. Keep the tree
+  tidy by moving it yourself (see §6).
+- Any `.md` file anywhere in the repository with an `id` key is a card. Without
+  an `id` it is documentation and is ignored, so `README.md` beside your issues
+  is fine.
+- Front-matter keys scrumit does not recognise are carried through every write
+  untouched, so you can safely add `jira:`, `okr:` or anything else.
+
+## 2. Directory layout
+
+Every path is configurable in `.scrumit/config.yaml`; these are the defaults.
+
+```
+repo-root/
+  .scrumit/
+    config.yaml                    # board columns, directories, settings
+    AGENTS.md                      # this specification, generated per repo
+    templates/                     # optional starting points for new issues
+  backlog/
+    ACME-118.md                    # no sprint yet
+  sprints/
+    2026-S20/
+      sprint.md                    # goal, dates, capacity, retrospective
+      ACME-140.md
+  epics/
+    EPIC-01-checkout-reliability.md
+  done/
+    2026-S19/                      # finished work, archived by sprint
+      ACME-120.md
+    ACME-161.md                    # finished with no sprint
+```
+
+Everything under `.git/`, `node_modules/`, `dist/`, `build/`, `out/`, `vendor/`,
+`coverage/`, `target/`, `.next/`, `.turbo/` and `.venv/` is skipped when
+scanning.
+
+## 3. Issue file
+
+```markdown
+---
+id: ACME-140
+title: Retry webhook delivery with backoff
+status: doing
+type: story
+epic: EPIC-01
+sprint: 2026-S20
+points: 3
+assignee: tobias-rehn
+priority: 1
+labels:
+  - reliability
+blocked_by:
+  - ACME-138
+created: 2026-10-14
+updated: 2026-10-16
+order: 20
+---
+
+## Context
+
+Webhook consumers see duplicate deliveries when a 5xx is followed by a slow
+recovery.
+
+## Acceptance criteria
+
+- [ ] Retry at 1s, 8s, 60s, then dead-letter
+- [ ] Duplicate deliveries drop below 0.01%
+```
+
+### Front-matter reference
+
+| Key | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `id` | string | **yes** | — | `PREFIX-N`, uppercase. Stable forever. See §6 for how to pick the next one. |
+| `title` | string | no | first heading, else `id` | One line, sentence case, no trailing period. |
+| `status` | enum | no | `backlog` | `backlog` `todo` `doing` `review` `done` |
+| `type` | enum | no | `story` | `story` `bug` `chore` `spike` |
+| `epic` | string \| null | no | null | An epic `id`, e.g. `EPIC-01`. |
+| `sprint` | string \| null | no | null | A sprint `id`, which is also the folder name. |
+| `points` | number | no | null | Estimate. Integer or half, never hours. |
+| `assignee` | string | no | null | Handle, lowercase hyphenated: `ana-marin`. |
+| `priority` | 0–3 | no | null | `0` drop everything, `1` this sprint, `2` next, `3` someday. |
+| `labels` | string[] | no | `[]` | Free-form, lowercase. |
+| `blocked_by` | string[] | no | `[]` | Issue ids. A card is *blocked* while any listed id is not `done`. |
+| `links` | string[] | no | `[]` | URLs. |
+| `order` | number | no | `0` | Manual position within the column. Lower sorts first. |
+| `created` | date | no | null | Set once. |
+| `updated` | date | no | null | Set on every change. |
+
+Omit a key rather than writing `null`, `""` or `[]`. A file written by hand
+should look like a file a person wrote.
+
+### Body conventions
+
+The body is free markdown and scrumit never rewrites it. Two conventions earn
+their keep:
+
+- `## Context` — why this exists, in a paragraph or two.
+- `## Acceptance criteria` — a task list. scrumit counts `- [ ]` and `- [x]` and
+  shows `2/5` on the card and in the editor, and the Flow view reports started
+  issues that have no checklist at all.
+
+## 4. Epic and sprint files
+
+### Epic
+
+```markdown
+---
+id: EPIC-01
+title: Checkout reliability
+state: active
+owner: lise-okafor
+target: 2026-12-15
+color: 1
+---
+
+Every path from authorisation to settlement should be idempotent and
+reconcilable. If a payment fails, the merchant should find out why without
+asking us.
+```
+
+| Key | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `id` | string | **required** | Conventionally `EPIC-NN`. |
+| `title` | string | first heading | |
+| `state` | enum | `planned` | `planned` `active` `done` |
+| `owner` | string | null | |
+| `target` | date | null | |
+| `color` | 1–8 | derived from the id | Indexes the theme's hue ramp, so an epic keeps its colour family across themes. |
+
+Epic progress is never stored. It is the sum of its issues.
+
+### Sprint
+
+```markdown
+---
+id: 2026-S20
+name: Sprint 20
+state: active
+goal: Make webhook delivery trustworthy end to end.
+start: 2026-10-15
+end: 2026-10-28
+capacity: 34
+---
+
+## Working agreements
+
+- Wednesday is integration day
+```
+
+| Key | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `id` | string | parent folder name | Conventionally `YYYY-SNN`. Doubles as the folder. |
+| `name` | string | the id | |
+| `state` | enum | `planned` | `planned` `active` `closed` |
+| `goal` | string | `""` | One sentence a stakeholder would understand. |
+| `start` / `end` | date | null | Drives days-remaining and the burndown. |
+| `capacity` | number | null | Committed points. Exceeding it is reported, not blocked. |
+
+A sprint folder with issues but no `sprint.md` is legal: scrumit shows the
+sprint and marks it as having no file yet. Write the `sprint.md` when you have
+a goal, dates or a retro to record.
+
+## 5. Path derivation
+
+The path is a function of the fields. This is what makes a hand-moved file and a
+hand-edited field converge on the same place.
+
+```
+status == done and sprint set   ->  done/<sprint>/<id>.md
+status == done and no sprint    ->  done/<id>.md
+sprint set                      ->  sprints/<sprint>/<id>.md
+otherwise                       ->  backlog/<id>.md
+
+epic                            ->  epics/<EPIC-ID>-<slug(title)>.md
+sprint                          ->  sprints/<sprint-id>/sprint.md
+config                          ->  .scrumit/config.yaml
+```
+
+`<slug>` is the title lowercased, accents folded to ASCII, runs of non-letters
+replaced by `-`, truncated to 48 characters. An epic's file name is fixed when it
+is created: retitling an epic does not move its file.
+
+## 6. Operations
+
+Every recipe below is a complete description of the file changes involved.
+
+### Create an issue
+
+1. Choose the id: reuse the prefix already in use in this repository and take the
+   highest `<PREFIX>-N` for that prefix, plus one. If the repository has no issues
+   yet, derive the prefix from the first word of the project name
+   (`Acme Payments Platform` → `ACME`), or use `SCRUM` when there is no project
+   name. Never mix prefixes within one repository.
+2. Choose the path from §5. A new, unscheduled issue goes in `backlog/`.
+3. Set `order` to the highest `order` in the target column plus 10. If the column
+   is empty, use `10`.
+4. Set `created` and `updated` to today.
+5. Write the file. Keep it short: title, and a body with `## Context` and
+   `## Acceptance criteria` when you know them.
+
+```sh
+# The smallest useful card.
+cat > backlog/ACME-150.md <<'EOF'
+---
+id: ACME-150
+title: Reject duplicate refund requests
+status: backlog
+type: bug
+points: null
+labels:
+  - payments
+created: 2026-10-16
+updated: 2026-10-16
+order: 10
+---
+
+## Context
+
+A client retry after a timeout can refund twice.
+EOF
+```
+
+### Move an issue to another column
+
+Edit `status`, set `updated`, and move the file to the path §5 now derives.
+
+```sh
+sed -i '' 's/^status: todo$/status: doing/' sprints/2026-S20/ACME-140.md
+git mv sprints/2026-S20/ACME-140.md sprints/2026-S20/ACME-140.md   # no move needed
+```
+
+The move is only needed when `sprint` or `done` changes the directory. Changing
+`status` within a sprint's directory does not move anything.
+
+### Schedule an issue into a sprint
+
+Set `sprint` to the sprint id and move the file from `backlog/` to
+`sprints/<sprint>/`.
+
+### Complete an issue
+
+Set `status: done`. If it belongs to a sprint, the file moves to
+`done/<sprint>/`; if not, to `done/`. Do this rather than deleting: the archive
+is what makes velocity, throughput and lead time computable.
+
+### Close a sprint
+
+Set `state: closed` in `sprints/<id>/sprint.md`. Unfinished issues stay in place
+unless you also move them: return them to `backlog/` and set `sprint: null`, or
+carry them into the next sprint by setting `sprint` to its id. Record what you
+learned in the body under `## Retro`.
+
+### Create an epic
+
+Pick the next `EPIC-NN`, choose a `color` from 1–8 that no active epic is using,
+and write `epics/EPIC-NN-<slug>.md`.
+
+### Reprioritise
+
+Change `priority`, or `order` within a column. Do not renumber every card: leave
+gaps. scrumit spaces by 10 precisely so a single drop rewrites a single file.
+
+### Bulk edit
+
+Apply the same field edit across files, then set `updated` on each. A
+one-property change across twenty issues should read as twenty one-line diffs.
+
+## 7. config.yaml
+
+```yaml
+version: 1
+project: Acme Payments Platform
+columns:
+  - { id: backlog, name: Backlog, wip: null }
+  - { id: todo,    name: To do,   wip: null }
+  - { id: doing,   name: Doing,   wip: 3 }
+  - { id: review,  name: Review,  wip: 4 }
+  - { id: done,    name: Done,    wip: null, terminal: true }
+backlog:  { dir: backlog }
+sprints:  { dir: sprints, length_days: 14 }
+epics:    { dir: epics }
+archive:  { dir: done }
+ceremony: Planning Monday, review and retro every second Friday
+vocabulary: { points: true, assignees: true, priorities: true }
+```
+
+Those are the real defaults. A limit on `To do` is a legitimate thing to add if
+you want to police the sprint commitment, but it is not one out of the box —
+work-in-progress limits belong on the columns where work is actually in progress.
+
+- Column **ids are fixed** to the five statuses, because status decides which
+  folder a file lives in and that has to be portable between people and machines.
+  Rename, reorder, cap and hide freely; do not invent an id.
+- `wip` is a work-in-progress ceiling. Exceeding it is reported on the board and
+  in the Flow view, and blocks nothing.
+- `terminal: true` marks the column excluded from cycle-time and flow maths.
+- Every `dir` is relative to the repository root.
+- A missing config is fine: the defaults above apply.
+
+## 8. Before you finish
+
+- [ ] `id` unique across the repository, and nothing renumbered.
+- [ ] Path matches §5 for the artefact's own fields.
+- [ ] `updated` is today's date on every issue you touched.
+- [ ] The markdown body is unchanged unless changing it was the point.
+- [ ] Front-matter you did not need is still there, byte for byte.
+- [ ] `status` and `type` are values from the enum tables, exactly.
+- [ ] No file was created that duplicates an existing `id`.
+- [ ] `git status` shows what you expect: one file per logical change.
+
+## 9. Reading the result back
+
+In Chrome and Edge, scrumit watches the repository and rebuilds the board within
+about a second of a file changing, so work you do is visible without anyone
+asking for a reload. In other browsers it caches an index and needs a nudge:
+press **Rescan** in the top bar, or just reopen the repository. Either way the
+format is identical.
+
+One asymmetry is worth knowing. On its next write, scrumit puts a card back at
+the path §5 derives, so drift is corrected rather than reported. A careless path
+will be quietly tidied instead of flagged. Get the path right, and let the test
+suite tell you if you have not.
+
+`git` remains yours. scrumit reads the branch name from `.git/HEAD` and makes no
+attempt at `git status`, so commit, branch and merge in the terminal. A branch
+switch shows up on the board on its own.
+
+## 10. Running scrumit
+
+```sh
+npm install
+npm run dev        # http://localhost:5178
+npm run check      # typecheck, then the format, adapter and spec tests
+npm run smoke      # drive a real browser, screenshot every view
+```
+
+Opening a folder uses the File System Access API, so it needs Chrome or Edge.
+Everything works in the bundled demo repository otherwise. Use
+**Settings → AI agents** to write this specification into a repository as
+`.scrumit/AGENTS.md`.
+
+## 11. Links
+
+- Repository format and data model: `docs/ARCHITECTURE.md`
+- Project overview and design notes: `README.md`
+- Front-matter round-tripping tests: `tools/format.test.mjs`
+- Adapter tests, including file moves: `tools/fsa.test.mjs`
