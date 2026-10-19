@@ -119,6 +119,7 @@ scrumit board --ready
 A task is **ready** when:
 
 - it is `backlog` or `todo`;
+- its sprint is `active`, or it has no sprint;
 - every id in `blocked_by` exists and is `done`;
 - no live claim lock exists;
 - it is not assigned to a human.

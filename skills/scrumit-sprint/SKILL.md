@@ -35,6 +35,8 @@ leaves both a file change and a git commit.
    scrumit board --json
    ```
 2. Read the board's `ready`, `inProgress`, `blocked`, and `validation` arrays.
+   A task is ready only when its sprint is `active` (or it has no sprint),
+   every blocker is done, no claim exists, and it is not assigned to a human.
 3. Read the task file. Read the referenced epic and sprint when they exist.
 4. Load any project skill the task clearly needs (for example a UI skill for a
    front-end change). Do not load irrelevant skills.

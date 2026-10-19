@@ -311,6 +311,54 @@ Duplicate id and invalid enums.
   assert.ok(codes.includes('path-mismatch'))
 })
 
+test('planned or closed sprint work is not ready and cannot be claimed', () => {
+  const repo = makeRepo()
+  must(repo, ['init', '--project', 'Test'])
+  must(repo, ['new', 'sprint', '--name', 'Sprint 1', '--state', 'planned'])
+  const id = JSON.parse(
+    must(repo, ['new', 'issue', '--title', 'Planned work', '--sprint', '2026-S01', '--json']),
+  ).id
+
+  const planned = board(repo)
+  assert.ok(!planned.ready.some((task) => task.id === id))
+  assert.equal(planned.tasks.find((task) => task.id === id).sprintState, 'planned')
+  const refused = run(repo, ['claim', id, '--agent', 'alpha'])
+  assert.equal(refused.status, 1)
+  assert.match(refused.stderr, /planned/i)
+  assert.equal(git(repo, ['status', '--porcelain']).trim(), '')
+
+  // Activate the sprint; the same card becomes claimable.
+  const sprintPath = 'sprints/2026-S01/sprint.md'
+  writeFileSync(
+    join(repo.dir, sprintPath),
+    readFileSync(join(repo.dir, sprintPath), 'utf8').replace('state: planned', 'state: active'),
+  )
+  execFileSync('git', ['add', sprintPath], { cwd: repo.dir })
+  execFileSync('git', ['commit', '-m', 'activate sprint'], { cwd: repo.dir })
+  must(repo, ['claim', id, '--agent', 'alpha'])
+  assert.equal(board(repo).tasks.find((task) => task.id === id).status, 'doing')
+
+  // A closed sprint is not a queue either.
+  writeFileSync(
+    join(repo.dir, sprintPath),
+    readFileSync(join(repo.dir, sprintPath), 'utf8').replace('state: active', 'state: closed'),
+  )
+  execFileSync('git', ['add', sprintPath], { cwd: repo.dir })
+  execFileSync('git', ['commit', '-m', 'close sprint'], { cwd: repo.dir })
+  const closedRefusal = run(repo, ['claim', id, '--agent', 'beta', '--force'])
+  assert.equal(closedRefusal.status, 1)
+  assert.match(closedRefusal.stderr, /closed/i)
+})
+
+test('backlog work with no sprint stays claimable', () => {
+  const repo = makeRepo()
+  must(repo, ['init', '--project', 'Test'])
+  const id = JSON.parse(must(repo, ['new', 'issue', '--title', 'Loose work', '--json'])).id
+  assert.ok(board(repo).ready.some((task) => task.id === id))
+  must(repo, ['claim', id, '--agent', 'alpha'])
+  assert.match(readIssue(repo, `backlog/${id}.md`), /^status: doing$/m)
+})
+
 test('new issue increments ids and new sprint uses the configured length', () => {
   const repo = makeRepo()
   must(repo, ['init', '--project', 'Test'])

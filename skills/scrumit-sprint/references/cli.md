@@ -74,8 +74,9 @@ JSON shape:
 }
 ```
 
-A task is **ready** when it is `backlog` or `todo`, every `blocked_by` issue is
-`done`, no live claim exists, and it is not assigned to a human.
+A task is **ready** when it is `backlog` or `todo`, its sprint is `active` (or
+it has no sprint), every `blocked_by` issue is `done`, no live claim exists, and
+it is not assigned to a human. A planned or closed sprint is not a queue.
 
 ## Validation
 

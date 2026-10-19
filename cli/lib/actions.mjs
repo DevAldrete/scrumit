@@ -183,6 +183,20 @@ export function claimTask(root, id, options = {}) {
   let state = repoState(root)
   const issue = issueById(state, id)
 
+  if (issue.sprint) {
+    const sprint = state.sprints.find((item) => item.id === issue.sprint)
+    if (!sprint || !sprint.path) {
+      throw new CliError(
+        `Sprint ${issue.sprint} has no sprint.md. Create it before claiming work in it.`,
+      )
+    }
+    if (sprint.state !== 'active') {
+      throw new CliError(
+        `Sprint ${issue.sprint} is ${sprint.state}. Activate it before claiming work in it.`,
+      )
+    }
+  }
+
   if (!options.force && issue.status !== 'backlog' && issue.status !== 'todo') {
     throw new CliError(
       `${id} is ${issue.status}; only backlog or todo tasks can be claimed. Use --force to take over a stale claim.`,

@@ -223,17 +223,23 @@ export function boardState(state, options = {}) {
       ? state.issues.filter((issue) => issue.sprint === sprint.id)
       : state.issues.filter((issue) => issue.status !== 'done')
 
+  const sprintStates = new Map(state.sprints.map((item) => [item.id, item.state]))
   const tasks = selected.map((issue) => {
     const blockers = blockersOf(issue, state)
     const blocked = blockers.some((blocker) => !blocker.done)
     const lock = readLock(state.root, issue.id)
     const claimed = Boolean(lock && !lock.unreadable && !lockIsStale(lock))
     const assignedToHuman = Boolean(issue.assignee && !issue.assignee.startsWith('agent-'))
+    const sprintState = issue.sprint ? sprintStates.get(issue.sprint) ?? null : null
+    // Work with no sprint is backlog work. Work inside a sprint is only ready
+    // once that sprint is active; a planned or closed sprint is not a queue.
+    const sprintOpen = issue.sprint === null || sprintState === 'active'
     const ready =
       (issue.status === 'backlog' || issue.status === 'todo') &&
       !blocked &&
       !claimed &&
-      !assignedToHuman
+      !assignedToHuman &&
+      sprintOpen
     return {
       id: issue.id,
       title: issue.title,
@@ -241,6 +247,7 @@ export function boardState(state, options = {}) {
       type: issue.type,
       epic: issue.epic,
       sprint: issue.sprint,
+      sprintState,
       points: issue.points,
       assignee: issue.assignee,
       priority: issue.priority,
