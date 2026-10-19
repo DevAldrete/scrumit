@@ -1,16 +1,17 @@
 ---
 id: ISSUE-16
 title: "Only offer and claim work in an active sprint"
-status: todo
+status: doing
 type: bug
 epic: EPIC-01
 sprint: 2026-S02
 points: 2
 priority: 1
 labels: [agents, tooling]
-order: 70
+order: 10
 created: 2026-10-19
 updated: 2026-10-19
+assignee: agent-opencode
 ---
 
 ## Context
