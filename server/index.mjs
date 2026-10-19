@@ -338,8 +338,9 @@ async function main() {
     console.log(`scrumit  ${info.url}`)
     console.log(`  repo   ${info.repo}`)
     console.log(`  token  ${info.token}`)
+    console.log(`  open   ${info.url}/#token=${info.token}`)
     console.log('')
-    console.log('Set the same token in scrumit, or open the served URL from this process.')
+    console.log('Open the URL above, or enter the URL and token in scrumit.')
   }
   const close = async () => {
     await info.stop()

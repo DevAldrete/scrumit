@@ -2,6 +2,10 @@ import { computed, signal } from '@preact/signals'
 import { AGENT_GUIDE_PATH, buildAgentGuide } from './agentGuide.ts'
 import { diffSnapshots, type SnapshotDiff } from './changes.ts'
 import {
+  overlayConflicts,
+  type ConflictInfo,
+} from './conflicts.ts'
+import {
   newEpicId,
   newIssueId,
   serializeEpic,
@@ -103,6 +107,8 @@ export const saving = signal(false)
 export const errorMessage = signal<string | null>(null)
 export const skippedFiles = signal<{ path: string; reason: string }[]>([])
 export const validation = signal<ValidationIssue[]>([])
+/** Cards whose file changed on disk while the user had unsaved local text. */
+export const conflicts = signal<Map<string, ConflictInfo>>(new Map())
 export const drafts = signal<DraftRecord[]>([])
 
 export const config = signal<BoardConfig>(defaultConfig())
@@ -249,6 +255,19 @@ export function refuseWrite(): false {
     notify(writeRefusalMessage(capabilities.value, permission.value), 'error')
   }
   return false
+}
+
+function setConflict(info: ConflictInfo): void {
+  const next = new Map(conflicts.value)
+  next.set(info.issueId, info)
+  conflicts.value = next
+}
+
+export function clearConflict(id: string): void {
+  if (!conflicts.value.has(id)) return
+  const next = new Map(conflicts.value)
+  next.delete(id)
+  conflicts.value = next
 }
 
 export function notify(
@@ -555,8 +574,16 @@ export async function persistIssue(id: string): Promise<void> {
     if (repo) drafts.value = (await listDrafts(repo.id)).filter((d) => d.issueId !== id)
   } catch (error) {
     if (error instanceof ConflictError) {
+      setConflict({
+        issueId: id,
+        path,
+        mine: text,
+        theirs: error.current,
+        etag: error.etag,
+        at: Date.now(),
+      })
       notify(
-        `Could not save ${issue.id}: the file changed on disk. Rescan and try again.`,
+        `Could not save ${issue.id}: the file changed on disk while you were editing.`,
         'error',
       )
     } else if (error instanceof ServerUnavailableError) {
@@ -566,6 +593,64 @@ export async function persistIssue(id: string): Promise<void> {
     }
   } finally {
     markSaving(-1)
+  }
+}
+
+/**
+ * Resolve a 409 honestly. There is no auto-merge: the user picks a version.
+ *
+ * `mine` writes the local text with the fresh ETag from the conflict, so it is
+ * a deliberate overwrite rather than a blind one. `theirs` discards the local
+ * text and rescans.
+ */
+export async function resolveConflict(
+  id: string,
+  choice: 'mine' | 'theirs',
+): Promise<void> {
+  const info = conflicts.value.get(id)
+  if (!info) return
+  const repo = activeRepo.value
+  const issue = issues.value.find((item) => item.id === id)
+
+  if (choice === 'theirs') {
+    clearConflict(id)
+    if (repo) await clearDraft(repo.id, id)
+    await rescan()
+    notify(`Loaded the disk version of ${id}.`, 'info')
+    return
+  }
+
+  const src = source
+  if (!src || !issue) {
+    notify('Could not keep your version: the repository is not open.', 'error')
+    return
+  }
+
+  const path = issuePath(issue, config.value.dirs)
+  const text = serializeIssue({ ...issue, path })
+  try {
+    await src.write(path, text, { base: info.etag })
+    noteSelfWrite(path, issue.path)
+    if (issue.path !== path) {
+      issues.value = issues.value.map((item) =>
+        item.id === id ? { ...item, path } : item,
+      )
+    }
+    clearConflict(id)
+    if (repo) await clearDraft(repo.id, id)
+    notify(`Kept your version of ${id}.`, 'ok')
+  } catch (error) {
+    if (error instanceof ConflictError) {
+      setConflict({
+        ...info,
+        theirs: error.current,
+        etag: error.etag,
+        at: Date.now(),
+      })
+      notify('The file changed again. Compare the versions and choose again.', 'error')
+    } else {
+      notify(describeError(error), 'error')
+    }
   }
 }
 
@@ -580,7 +665,9 @@ export async function flush(): Promise<void> {
     if (draftTimer !== undefined) clearTimeout(draftTimer)
     draftTimers.delete(id)
   }
-  await Promise.all([...ids].map((id) => persistIssue(id)))
+  // A conflicted card is not retried: the user has to choose a version.
+  const writable = [...ids].filter((id) => !conflicts.value.has(id))
+  await Promise.all(writable.map((id) => persistIssue(id)))
 }
 
 /* -------------------------------------------------------------------------- */
@@ -589,7 +676,11 @@ export async function flush(): Promise<void> {
 
 function applySnapshot(snapshot: RepoSnapshot): void {
   config.value = snapshot.config
-  issues.value = snapshot.issues
+  issues.value = overlayConflicts(
+    snapshot.issues,
+    issues.value,
+    conflicts.value.keys(),
+  )
   epics.value = snapshot.epics
   sprints.value = snapshot.sprints
   fileCount.value = snapshot.fileCount
@@ -617,6 +708,7 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
   loadState.value = 'loading'
   errorMessage.value = null
   serverDownNotified = false
+  conflicts.value = new Map()
   try {
     if (options.source) {
       // Read-only fixtures and tests hand scrumit a source directly. It is not
@@ -922,6 +1014,7 @@ export async function closeRepo(): Promise<void> {
   handleLost.value = false
   activeRepo.value = null
   validation.value = []
+  conflicts.value = new Map()
   issues.value = []
   epics.value = []
   sprints.value = []

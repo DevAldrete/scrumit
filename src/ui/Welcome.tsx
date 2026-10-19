@@ -4,7 +4,9 @@ import { fsaSupported } from '../lib/fsa.ts'
 import { entriesFromFiles, type ReadOnlyEntry } from '../lib/readonly.ts'
 import {
   addLocalRepo,
+  connectToServer,
   forgetRepo,
+  notify,
   openDemo,
   openHandleAsRepo,
   openReadOnlyRepo,
@@ -111,10 +113,35 @@ function dropName(transfer: DataTransfer): string {
 export function Welcome() {
   const input = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
+  const [connectOpen, setConnectOpen] = useState(false)
+  const [serverUrl, setServerUrl] = useState('http://127.0.0.1:5180')
+  const [serverToken, setServerToken] = useState('')
+  const [connecting, setConnecting] = useState(false)
 
   useEffect(() => {
     // `webkitdirectory` is widely supported but not in Preact's JSX types.
     input.current?.setAttribute('webkitdirectory', '')
+  }, [])
+
+  useEffect(() => {
+    // `scrumit serve` can print a URL with the token in the fragment. The
+    // fragment never reaches the server, and we remove it after reading it.
+    const match = /^#token=(.+)$/.exec(window.location.hash)
+    if (!match) return
+    const token = decodeURIComponent(match[1])
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + window.location.search,
+    )
+    setConnecting(true)
+    void connectToServer(window.location.origin, token)
+      .catch((error) => {
+        notify(error instanceof Error ? error.message : String(error), 'error')
+        setServerToken(token)
+        setConnectOpen(true)
+      })
+      .finally(() => setConnecting(false))
   }, [])
 
   async function onDrop(event: DragEvent): Promise<void> {
@@ -176,7 +203,58 @@ export function Welcome() {
                 Open a folder read-only
               </Btn>
               <Btn onClick={() => void openDemo()}>Explore the demo repo</Btn>
+              <Btn onClick={() => setConnectOpen((open) => !open)}>
+                Connect to a local server
+              </Btn>
             </div>
+
+            {connectOpen ? (
+              <form
+                class="panel mt-3 flex max-w-[52ch] flex-col gap-2 p-2.5"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  setConnecting(true)
+                  void connectToServer(serverUrl, serverToken)
+                    .catch((error) => {
+                      notify(
+                        error instanceof Error ? error.message : String(error),
+                        'error',
+                      )
+                    })
+                    .finally(() => setConnecting(false))
+                }}
+              >
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <label class="flex flex-col gap-1">
+                    <span class="label">server</span>
+                    <input
+                      class="field"
+                      value={serverUrl}
+                      onInput={(event) => setServerUrl(event.currentTarget.value)}
+                      placeholder="http://127.0.0.1:5180"
+                    />
+                  </label>
+                  <label class="flex flex-col gap-1">
+                    <span class="label">token</span>
+                    <input
+                      class="field"
+                      type="password"
+                      value={serverToken}
+                      onInput={(event) => setServerToken(event.currentTarget.value)}
+                      placeholder="printed by scrumit serve"
+                    />
+                  </label>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <Btn variant="primary" type="submit" disabled={connecting}>
+                    {connecting ? 'Connecting…' : 'Connect'}
+                  </Btn>
+                  <span class="text-[11px] text-ink-4">
+                    Run <code>scrumit serve --repo .</code> and copy the token it prints.
+                  </span>
+                </div>
+              </form>
+            ) : null}
 
             <input
               ref={input}

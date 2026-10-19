@@ -54,6 +54,12 @@ test('every front-matter key an issue can carry is documented', () => {
   }
 })
 
+test('the spec tells an agent how to handle a sidecar conflict', () => {
+  assert.match(spec, /409/)
+  assert.match(spec, /scrumit serve|local sidecar/i)
+  assert.match(spec, /Re-read the file/i)
+})
+
 test('every config key is documented', () => {
   for (const key of ['columns', 'wip', 'terminal', 'length_days', 'vocabulary', 'ceremony', 'dir']) {
     assert.match(spec, new RegExp(`\`?${key}\`?`), `llms.txt does not document config key \`${key}\``)

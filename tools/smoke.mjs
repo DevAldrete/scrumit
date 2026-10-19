@@ -582,6 +582,25 @@ try {
     }
     await shot('22-read-only')
   })
+
+  await step('show and resolve a conflict honestly', async () => {
+    await clickByText('.card', 'READONLY-1')
+    await waitForText('Assignee', 8000)
+    await page.evaluate(() => window.__scrumit.simulateConflict())
+    await waitForText('This file changed on disk', 8000)
+    const compare = await page.evaluate(() =>
+      document.body.innerText.includes('Compare versions'),
+    )
+    if (!compare) problems.push('the conflict comparison is missing')
+
+    await clickByText('button', 'Take theirs')
+    await new Promise((resolve) => setTimeout(resolve, 700))
+    const gone = await page.evaluate(
+      () => !document.body.innerText.includes('This file changed on disk'),
+    )
+    if (!gone) problems.push('the conflict bar did not clear after Take theirs')
+    await shot('23-conflict')
+  })
 } catch (error) {
   problems.push(`fatal: ${error.message}`)
 } finally {

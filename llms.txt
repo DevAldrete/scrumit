@@ -372,6 +372,11 @@ suite tell you if you have not.
 attempt at `git status`, so commit, branch and merge in the terminal. A branch
 switch shows up on the board on its own.
 
+If you are writing through the local sidecar (`scrumit serve`), a write can
+return `409 Conflict`. That means the file changed on disk since you read it.
+Re-read the file, reapply your change, and write again with the fresh version.
+Never overwrite on a `409`: another person or agent may be right.
+
 ## 10. Running scrumit
 
 ```sh

@@ -1,15 +1,16 @@
 import { daysBetween, todayISO } from '../lib/format.ts'
 import { checklistStats } from '../lib/md.ts'
 import type { Issue } from '../lib/model.ts'
-import { blockedIds, epicById, selectedId, toggleSelected } from '../lib/store.ts'
+import { blockedIds, conflicts, epicById, selectedId, toggleSelected } from '../lib/store.ts'
 import { Avatar, Chip, Pts } from './primitives.tsx'
-import { ICON_FOR_TYPE, IconBlocked, IconGrip } from './icons.tsx'
+import { ICON_FOR_TYPE, IconBlocked, IconGrip, IconWarn } from './icons.tsx'
 
 const TYPE_HUE = { story: 0, bug: 7, chore: 0, spike: 4 } as const
 
 export function IssueCard({ issue, dragging = false }: { issue: Issue; dragging?: boolean }) {
   const epic = issue.epic ? epicById.value.get(issue.epic) : null
   const blocked = blockedIds.value.has(issue.id)
+  const conflicted = conflicts.value.has(issue.id)
   const age = daysBetween(issue.updated, todayISO())
   const criteria = checklistStats(issue.body)
   const selected = selectedId.value === issue.id
@@ -62,7 +63,7 @@ export function IssueCard({ issue, dragging = false }: { issue: Issue; dragging?
 
       <p class="mt-1 line-clamp-3 text-[13px] leading-[1.4] text-ink">{issue.title}</p>
 
-      {issue.type !== 'story' || issue.labels.length > 0 || blocked ? (
+      {issue.type !== 'story' || issue.labels.length > 0 || blocked || conflicted ? (
         <div class="mt-1.5 flex flex-wrap items-center gap-1">
           {issue.type !== 'story' ? (
             <Chip tint={TYPE_HUE[issue.type] || undefined} class="capitalize">
@@ -80,6 +81,16 @@ export function IssueCard({ issue, dragging = false }: { issue: Issue; dragging?
             <Chip class="chip-tint" tint={7} title={`Blocked by ${issue.blockedBy.join(', ')}`}>
               <IconBlocked size={10} />
               blocked
+            </Chip>
+          ) : null}
+          {conflicted ? (
+            <Chip
+              class="chip-tint"
+              tint={7}
+              title="Changed on disk — open the card and choose a version"
+            >
+              <IconWarn size={10} />
+              conflict
             </Chip>
           ) : null}
         </div>

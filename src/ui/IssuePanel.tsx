@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
+import type { ConflictInfo } from '../lib/conflicts.ts'
 import { humanDate } from '../lib/format.ts'
 import { checklistStats } from '../lib/md.ts'
 import { renderMarkdown } from '../lib/render.ts'
@@ -10,11 +11,13 @@ import {
   assignees,
   capabilities,
   config,
+  conflicts,
   deleteIssue,
   epicById,
   epics,
   issueIds,
   patchIssue,
+  resolveConflict,
   saving,
   select,
   selectedIssue,
@@ -29,6 +32,7 @@ export function IssuePanel() {
   const [tab, setTab] = useState<'write' | 'preview'>('write')
   const [confirming, setConfirming] = useState(false)
   const canWrite = capabilities.value.canWrite
+  const conflict = issue ? conflicts.value.get(issue.id) ?? null : null
 
   const issueId = issue?.id ?? null
   const body = issue?.body ?? ''
@@ -82,6 +86,14 @@ export function IssuePanel() {
           <IconX size={14} />
         </Btn>
       </header>
+
+      {conflict ? (
+        <ConflictBar
+          conflict={conflict}
+          onKeep={() => void resolveConflict(issue.id, 'mine')}
+          onTake={() => void resolveConflict(issue.id, 'theirs')}
+        />
+      ) : null}
 
       <div class="scroll-y flex min-h-0 flex-1 flex-col gap-3 px-2.5 py-2.5">
         <AutoTextarea
@@ -351,6 +363,49 @@ export function IssuePanel() {
         </Modal>
       ) : null}
     </aside>
+  )
+}
+
+function ConflictBar({
+  conflict,
+  onKeep,
+  onTake,
+}: {
+  conflict: ConflictInfo
+  onKeep: () => void
+  onTake: () => void
+}) {
+  return (
+    <div class="shrink-0 border-b border-line bg-warn-soft px-2.5 py-2">
+      <p class="text-[11.5px] leading-snug text-ink">
+        This file changed on disk while you were editing.
+      </p>
+      <div class="mt-1.5 flex flex-wrap gap-1.5">
+        <Btn variant="primary" onClick={onKeep}>
+          Keep mine
+        </Btn>
+        <Btn onClick={onTake}>Take theirs</Btn>
+      </div>
+      <details class="mt-2">
+        <summary class="cursor-pointer text-[11px] text-ink-3">
+          Compare versions
+        </summary>
+        <div class="mt-1.5 grid gap-1.5">
+          <div>
+            <span class="label">Yours</span>
+            <pre class="inset mt-0.5 max-h-[140px] overflow-auto p-1.5 text-[10.5px] leading-relaxed text-ink-2">
+              {conflict.mine}
+            </pre>
+          </div>
+          <div>
+            <span class="label">On disk</span>
+            <pre class="inset mt-0.5 max-h-[140px] overflow-auto p-1.5 text-[10.5px] leading-relaxed text-ink-2">
+              {conflict.theirs ?? '(the file was removed)'}
+            </pre>
+          </div>
+        </div>
+      </details>
+    </div>
   )
 }
 

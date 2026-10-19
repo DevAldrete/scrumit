@@ -4,6 +4,7 @@ import {
   addLocalRepo,
   bootstrap,
   capabilities,
+  conflicts,
   externalUpdates,
   fileCount,
   flush,
@@ -20,6 +21,7 @@ import {
   repos,
   select,
   selectedId,
+  selectedIssue,
   toast,
   view,
   watching,
@@ -110,6 +112,21 @@ export function App() {
             lastOpenedAt: Date.now(),
           }
           await openRepo(record, { source: fixture.source, transient: true })
+        },
+        simulateConflict: () => {
+          const issue = selectedIssue.value ?? issues.value[0]
+          if (!issue) return null
+          const next = new Map(conflicts.value)
+          next.set(issue.id, {
+            issueId: issue.id,
+            path: issue.path ?? '',
+            mine: '---\nmine: true\n---\n\nThese are my words.\n',
+            theirs: '---\ntheirs: true\n---\n\nThese are the words on disk.\n',
+            etag: 'fixture-etag',
+            at: Date.now(),
+          })
+          conflicts.value = next
+          return issue.id
         },
         stats: () => ({
           externalUpdates: externalUpdates.value,
