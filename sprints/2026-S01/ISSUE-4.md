@@ -1,7 +1,7 @@
 ---
 id: ISSUE-4
 title: Introduce the capability model and a single write guard
-status: todo
+status: doing
 type: story
 epic: EPIC-02
 sprint: 2026-S01
@@ -10,7 +10,8 @@ priority: 1
 labels: [browser, core]
 created: 2026-10-19
 updated: 2026-10-19
-order: 40
+order: 10
+assignee: agent-opencode
 ---
 
 ## Context
