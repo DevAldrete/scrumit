@@ -22,10 +22,10 @@ read-only stops "works in Chrome" from being the definition of done.
 
 ## Acceptance criteria
 
-- [ ] `tools/source-contract.mjs` asserts list shape, round-trip read/write, nested directory creation, move/delete via `writeAt`, missing-file behaviour, `exists`, and the declared capabilities.
-- [ ] It runs against the FSA mock, a live HTTP server on an ephemeral port, and a read-only file map.
-- [ ] `watch` is asserted to work or be absent, never silently ignored.
-- [ ] `npm run check` stays green with no test weakened.
+- [x] `tools/source-contract.mjs` asserts list shape, round-trip read/write, nested directory creation, move/delete via `writeAt`, missing-file behaviour, `exists`, and the declared capabilities.
+- [x] It runs against the FSA mock, a live HTTP server on an ephemeral port, and a read-only file map.
+- [x] `watch` is asserted to work or be absent, never silently ignored.
+- [x] `npm run check` stays green with no test weakened.
 
 ## Delivery
 
