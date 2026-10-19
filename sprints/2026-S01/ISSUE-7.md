@@ -1,7 +1,7 @@
 ---
 id: ISSUE-7
 title: Measure browser support with a probe script
-status: todo
+status: doing
 type: chore
 epic: EPIC-02
 sprint: 2026-S01
@@ -10,7 +10,8 @@ priority: 3
 labels: [browser, testing]
 created: 2026-10-19
 updated: 2026-10-19
-order: 70
+order: 10
+assignee: agent-opencode
 ---
 
 ## Context
