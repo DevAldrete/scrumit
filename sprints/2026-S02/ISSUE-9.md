@@ -1,7 +1,7 @@
 ---
 id: ISSUE-9
 title: Add the adapter conformance suite
-status: todo
+status: doing
 type: story
 epic: EPIC-02
 sprint: 2026-S02
@@ -10,8 +10,9 @@ priority: 1
 labels: [testing, source]
 created: 2026-10-19
 updated: 2026-10-19
-order: 20
+order: 10
 blocked_by: [ISSUE-11]
+assignee: agent-opencode
 ---
 
 ## Context
