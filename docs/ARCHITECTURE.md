@@ -355,3 +355,7 @@ edits rather than only the latest toast.
 burndown from recorded sprint history rather than derivation; a dependency graph
 for `blocked_by`; CSV and Notion import; a printable sprint review; a plugin API
 over the `RepoSource` interface.
+
+The cross-browser story — writable folders outside Chromium, the local sidecar,
+read-only fallback, and the adapter conformance suite — is planned in
+[`PLAN.md`](PLAN.md).

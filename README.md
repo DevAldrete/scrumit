@@ -249,6 +249,11 @@ Later: a local git sidecar for `status`, `diff`, `log` and `commit`, burndown
 from real sprint history, a dependency graph for `blocked_by`, importer from
 CSV and Notion, and a printable sprint review.
 
+**The cross-browser strategy and the next session's work are planned in
+[`docs/PLAN.md`](docs/PLAN.md)** — three source tiers (folder, local sidecar,
+read-only), the sidecar API, a conformance suite for adapters, the known
+limitations, and a ranked list of small wins.
+
 ## Where I would push back
 
 Two things are deliberately limited, and it is worth knowing before you plan
