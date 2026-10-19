@@ -23,12 +23,12 @@ the capability model.
 
 ## Acceptance criteria
 
-- [ ] A persistent strip explains why the repository is read-only and how to get write access.
-- [ ] Sortable is disabled rather than removed; cards still look like cards.
-- [ ] Column composers, Add buttons, Delete, and mutating settings are hidden or disabled.
-- [ ] The issue panel fields are `readonly`/`disabled`.
-- [ ] The command palette omits mutating commands.
-- [ ] A smoke test proves a drag moves nothing and no file is written.
+- [x] A persistent strip explains why the repository is read-only and how to get write access.
+- [x] Sortable is disabled rather than removed; cards still look like cards.
+- [x] Column composers, Add buttons, Delete, and mutating settings are hidden or disabled.
+- [x] The issue panel fields are `readonly`/`disabled`.
+- [x] The command palette omits mutating commands.
+- [x] A smoke test proves a drag moves nothing and no file is written.
 
 ## Delivery
 
