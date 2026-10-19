@@ -1,7 +1,7 @@
 ---
 id: ISSUE-2
 title: Document CLI installation and the agent workflow
-status: todo
+status: doing
 type: chore
 epic: EPIC-01
 sprint: 2026-S01
@@ -10,7 +10,8 @@ priority: 2
 labels: [docs, agents]
 created: 2026-10-19
 updated: 2026-10-19
-order: 20
+order: 10
+assignee: agent-opencode
 ---
 
 ## Context
