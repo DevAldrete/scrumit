@@ -26,6 +26,11 @@ import {
 } from './db.ts'
 import { DemoSource } from './demo.ts'
 import { FsaSource, fsaSupported, pickDirectory } from './fsa.ts'
+import {
+  ConflictError,
+  HttpSource,
+  ServerUnavailableError,
+} from './http.ts'
 import { ReadOnlySource, type ReadOnlyEntry } from './readonly.ts'
 import { loadSprintSkillFiles, SPRINT_SKILL_FOLDER } from './skill.ts'
 import type { ValidationIssue } from './validate.ts'
@@ -286,7 +291,13 @@ function noteSelfWrite(...paths: (string | null | undefined)[]): void {
 }
 
 let stopWatch: StopWatching | null = null
+let serverDownNotified = false
 let externalTimer: ReturnType<typeof setTimeout> | null = null
+
+/** The sidecar token is per origin and never stored in the repo or Dexie. */
+export function serverTokenKey(url: string): string {
+  return `scrumit.server.${url.replace(/\/+$/, '')}`
+}
 let pendingPaths = new Set<string>()
 let pendingGitHead = false
 /** While true, an external refresh waits: SortableJS owns the DOM mid-drag. */
@@ -309,6 +320,18 @@ export async function startWatching(): Promise<void> {
       'This repository lives in the browser, so there is nothing to watch.'
     return
   }
+  if (src instanceof HttpSource) {
+    src.setConnectionListener((up, message) => {
+      if (up) {
+        if (serverDownNotified) notify('The local server is responding again.', 'ok')
+        serverDownNotified = false
+        return
+      }
+      if (serverDownNotified) return
+      serverDownNotified = true
+      notify(message ?? 'The local server is not responding.', 'error')
+    })
+  }
   try {
     stopWatch = await src.watch(queueExternal)
     watching.value = true
@@ -321,6 +344,8 @@ export async function startWatching(): Promise<void> {
 export function stopWatching(): void {
   stopWatch?.()
   stopWatch = null
+  if (source instanceof HttpSource) source.setConnectionListener(null)
+  serverDownNotified = false
   watching.value = false
   interacting = false
   if (externalTimer !== null) {
@@ -529,7 +554,16 @@ export async function persistIssue(id: string): Promise<void> {
     const repo = activeRepo.value
     if (repo) drafts.value = (await listDrafts(repo.id)).filter((d) => d.issueId !== id)
   } catch (error) {
-    notify(`Could not save ${issue.id}: ${describeError(error)}`, 'error')
+    if (error instanceof ConflictError) {
+      notify(
+        `Could not save ${issue.id}: the file changed on disk. Rescan and try again.`,
+        'error',
+      )
+    } else if (error instanceof ServerUnavailableError) {
+      notify(`Could not save ${issue.id}: the local server is not responding.`, 'error')
+    } else {
+      notify(`Could not save ${issue.id}: ${describeError(error)}`, 'error')
+    }
   } finally {
     markSaving(-1)
   }
@@ -582,6 +616,7 @@ export interface OpenOptions {
 export async function openRepo(record: RepoRecord, options: OpenOptions = {}): Promise<void> {
   loadState.value = 'loading'
   errorMessage.value = null
+  serverDownNotified = false
   try {
     if (options.source) {
       // Read-only fixtures and tests hand scrumit a source directly. It is not
@@ -610,6 +645,22 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
       next = await DemoSource.load()
       sourceCapabilities.value = next.capabilities
       permission.value = 'granted'
+    } else if (record.kind === 'http') {
+      const url = record.serverUrl
+      const token = url ? localStorage.getItem(serverTokenKey(url)) : null
+      if (!url || !token) {
+        throw new Error('Connect to the local server again; its token is missing.')
+      }
+      const http = new HttpSource(url, token)
+      try {
+        const health = await http.health()
+        http.applyCapabilities(health.capabilities)
+      } catch {
+        // The watch listener reports the outage once; keep the tier otherwise.
+      }
+      sourceCapabilities.value = http.capabilities
+      permission.value = 'granted'
+      next = http
     } else {
       if (!record.handle) {
         // The registry knows the repo but not its handle. Show the cached board
@@ -770,6 +821,35 @@ export async function openReadOnlyRepo(
   }
   await openRepo(record, { source: src, transient: true })
   notify(`Opened ${name} read-only`, 'info')
+}
+
+/**
+ * Connect to a running sidecar. The health check happens before the repo is
+ * registered, so a wrong URL or token fails without leaving a broken entry in
+ * the switcher.
+ */
+export async function connectToServer(url: string, token: string): Promise<void> {
+  const base = url.trim().replace(/\/+$/, '')
+  if (!/^https?:\/\//i.test(base)) {
+    throw new Error('The server URL must start with http:// or https://.')
+  }
+  const src = new HttpSource(base, token)
+  const health = await src.health()
+  src.applyCapabilities(health.capabilities)
+  localStorage.setItem(serverTokenKey(base), token)
+  const name = health.repo.split(/[\\/]/).filter(Boolean).pop() ?? 'Local server'
+  const record: RepoRecord = {
+    id: `http-${crypto.randomUUID()}`,
+    name,
+    path: health.repo,
+    kind: 'http',
+    color: personHue(name),
+    createdAt: Date.now(),
+    lastOpenedAt: Date.now(),
+    serverUrl: base,
+  }
+  await openRepo(record, { source: src })
+  notify(`Connected to ${name}`, 'ok')
 }
 
 /**
@@ -1405,6 +1485,15 @@ export async function bootstrap(): Promise<void> {
     await openRepo(record)
     return
   }
+  if (record.kind === 'http') {
+    const token = record.serverUrl
+      ? localStorage.getItem(serverTokenKey(record.serverUrl))
+      : null
+    if (record.serverUrl && token) {
+      await openRepo(record)
+      return
+    }
+  }
   if (!record.handle) {
     // A remembered repo whose handle the browser would not clone. Show the
     // cached board and say so rather than silently dropping the last session.
@@ -1415,8 +1504,8 @@ export async function bootstrap(): Promise<void> {
       sourceCapabilities.value = {
         canWrite: false,
         canWatch: false,
-        access: 'handle',
-        git: 'branch',
+        access: record.kind === 'http' ? 'http' : 'handle',
+        git: record.kind === 'http' ? 'full' : 'branch',
       }
       activeRepo.value = { ...record, handlePersisted: false }
       applySnapshot(cached)

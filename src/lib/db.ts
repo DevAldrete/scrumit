@@ -15,6 +15,8 @@ export interface RepoRecord extends RepoMeta {
    * survives a reload; the folder simply has to be reopened next time.
    */
   handlePersisted?: boolean
+  /** The sidecar origin, for the `http` tier. The token lives in localStorage. */
+  serverUrl?: string
 }
 
 export interface PrefsRecord {

@@ -16,6 +16,14 @@ export interface WatchEvent {
 
 export type StopWatching = () => void
 
+export interface WriteOptions {
+  /**
+   * The version the caller read. HTTP uses it as a concurrency check; local
+   * file sources can ignore it.
+   */
+  base?: string | null
+}
+
 export interface RepoSource {
   readonly kind: 'fsa' | 'demo' | 'readonly' | 'http'
   /** Human-readable origin, shown in the repo switcher. */
@@ -25,8 +33,8 @@ export interface RepoSource {
   /** Every file in the repo, as posix-style relative paths. */
   list(): Promise<string[]>
   read(path: string): Promise<string>
-  write(path: string, text: string): Promise<void>
-  remove(path: string): Promise<void>
+  write(path: string, text: string, options?: WriteOptions): Promise<void>
+  remove(path: string, options?: WriteOptions): Promise<void>
   exists(path: string): Promise<boolean>
   permission(): Promise<PermissionState>
   request(): Promise<PermissionState>
