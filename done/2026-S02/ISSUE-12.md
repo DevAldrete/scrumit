@@ -1,7 +1,7 @@
 ---
 id: ISSUE-12
 title: Connect to the sidecar and resolve conflicts honestly
-status: doing
+status: done
 type: story
 epic: EPIC-02
 sprint: 2026-S02
@@ -10,7 +10,7 @@ priority: 1
 labels: [ui, server]
 created: 2026-10-19
 updated: 2026-10-19
-order: 10
+order: 120
 blocked_by: [ISSUE-11]
 assignee: agent-opencode
 ---
@@ -28,3 +28,9 @@ be right.
 - [ ] A 409 keeps the user's text, marks the card, and offers Keep mine / Take theirs.
 - [ ] The watcher does not overwrite a conflicted card.
 - [ ] A stopped server produces one toast and legible write failures.
+
+## Delivery
+
+- Commits: `66d96d8`, `a23884d`
+- Summary: Sidecar connect flow and an explicit Keep mine / Take theirs conflict path
+- Checks: npm run check (110 tests), npm run smoke
