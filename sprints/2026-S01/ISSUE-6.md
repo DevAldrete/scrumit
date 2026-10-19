@@ -1,7 +1,7 @@
 ---
 id: ISSUE-6
 title: Add a validation report for agent-written repositories
-status: todo
+status: doing
 type: story
 epic: EPIC-02
 sprint: 2026-S01
@@ -10,7 +10,8 @@ priority: 2
 labels: [agents, flow]
 created: 2026-10-19
 updated: 2026-10-19
-order: 60
+order: 10
+assignee: agent-opencode
 ---
 
 ## Context
