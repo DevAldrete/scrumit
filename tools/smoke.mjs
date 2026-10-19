@@ -493,6 +493,22 @@ try {
     console.log(`  files  ${names.join(', ')}`)
     await shot('20-self-write')
   })
+
+  /* ------------------------------------------------------------------------
+   * A browser that exposes a handle but refuses to clone it into IndexedDB
+   * must still open the repository from its cached snapshot and say so.
+   * ---------------------------------------------------------------------- */
+
+  await step('open the cached board when the handle is gone', async () => {
+    await page.evaluate(() => window.__scrumit.dropHandles())
+    await page.reload({ waitUntil: 'networkidle0' })
+    await waitForText('Open the folder again', 12_000)
+    const text = await page.evaluate(() => document.body.innerText)
+    if (!text.includes('AGENT-1')) {
+      problems.push('the cached board did not render after the handle was dropped')
+    }
+    await shot('21-handle-lost')
+  })
 } catch (error) {
   problems.push(`fatal: ${error.message}`)
 } finally {

@@ -71,6 +71,11 @@ export const compact = signal(false)
 export const repos = signal<RepoRecord[]>([])
 export const activeRepo = signal<RepoRecord | null>(null)
 export const permission = signal<PermissionState>('granted')
+/**
+ * True when the registry remembers a repo but not its directory handle, so the
+ * cached board is showing and the folder must be reopened to write.
+ */
+export const handleLost = signal(false)
 export const loadState = signal<LoadState>('welcome')
 export const busy = signal(false)
 export const saving = signal(false)
@@ -543,7 +548,24 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
       permission.value = 'granted'
     } else {
       if (!record.handle) {
-        throw new Error('scrumit no longer has access to this folder. Add it again.')
+        // The registry knows the repo but not its handle. Show the cached board
+        // read-only, or send the user back to pick the folder again.
+        stopWatching()
+        source = null
+        const cached = await readSnapshot(record.id)
+        if (cached) {
+          handleLost.value = true
+          permission.value = 'denied'
+          activeRepo.value = { ...record, handlePersisted: false }
+          applySnapshot(cached)
+          loadState.value = 'ready'
+        } else {
+          handleLost.value = false
+          activeRepo.value = null
+          loadState.value = 'welcome'
+          notify('This browser cannot remember this folder. Open it again to continue.', 'error')
+        }
+        return
       }
       const fsa = new FsaSource(record.handle, record.path || record.name)
       let state = await fsa.permission()
@@ -553,6 +575,7 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
         // Show the cached view read-only rather than an empty board.
         stopWatching()
         source = null
+        handleLost.value = false
         activeRepo.value = record
         const cached = await readSnapshot(record.id)
         if (cached) applySnapshot(cached)
@@ -565,6 +588,7 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
     source = next
     activeRepo.value = record
     permission.value = 'granted'
+    handleLost.value = false
     await rescan()
     drafts.value = await listDrafts(record.id)
 
@@ -583,6 +607,12 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
 export async function reconnect(): Promise<void> {
   const record = activeRepo.value
   if (!record) return
+  // A handle the browser refused to clone cannot be re-granted; the only way
+  // forward is to pick the folder again.
+  if (record.kind === 'fsa' && (!record.handle || handleLost.value)) {
+    await addLocalRepo()
+    return
+  }
   await openRepo(record, { gesture: true })
 }
 
@@ -626,10 +656,16 @@ export async function addLocalRepo(): Promise<void> {
     lastOpenedAt: Date.now(),
     handle,
   }
-  await putRepo(record)
+  const saved = await putRepo(record)
   await refreshRepos()
   await openRepo(record, { gesture: true })
-  notify(`Opened ${handle.name}`, 'ok')
+  notify(
+    `Opened ${handle.name}`,
+    'ok',
+    saved.handlePersisted === false
+      ? ['This browser cannot remember the folder — you will need to open it again next session.']
+      : undefined,
+  )
 }
 
 /**
@@ -655,9 +691,15 @@ export async function openHandleAsRepo(
     lastOpenedAt: Date.now(),
     handle,
   }
-  await putRepo(record)
+  const saved = await putRepo(record)
   await refreshRepos()
   await openRepo(record)
+  if (saved.handlePersisted === false) {
+    notify(
+      'This browser cannot remember the folder — you will need to open it again next session.',
+      'info',
+    )
+  }
 }
 
 export async function openDemo(): Promise<void> {
@@ -688,6 +730,7 @@ export async function closeRepo(): Promise<void> {
   await flush()
   stopWatching()
   source = null
+  handleLost.value = false
   activeRepo.value = null
   issues.value = []
   epics.value = []
@@ -1189,11 +1232,24 @@ export async function bootstrap(): Promise<void> {
     await openRepo(record)
     return
   }
-  if (!record.handle) return
+  if (!record.handle) {
+    // A remembered repo whose handle the browser would not clone. Show the
+    // cached board and say so rather than silently dropping the last session.
+    const cached = await readSnapshot(record.id)
+    if (cached) {
+      handleLost.value = true
+      permission.value = 'denied'
+      activeRepo.value = { ...record, handlePersisted: false }
+      applySnapshot(cached)
+      loadState.value = 'ready'
+    }
+    return
+  }
   const fsa = new FsaSource(record.handle, record.path || record.name)
   const state = await fsa.permission()
   if (state === 'granted') await openRepo(record)
   else {
+    handleLost.value = false
     permission.value = state
     activeRepo.value = record
     const cached = await readSnapshot(record.id)

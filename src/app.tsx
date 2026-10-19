@@ -1,10 +1,12 @@
 import { useEffect } from 'preact/hooks'
 import {
   activeRepo,
+  addLocalRepo,
   bootstrap,
   externalUpdates,
   fileCount,
   flush,
+  handleLost,
   initialiseRepo,
   issues,
   loadState,
@@ -21,6 +23,7 @@ import {
   view,
   watching,
 } from './lib/store.ts'
+import { db } from './lib/db.ts'
 import { Backlog } from './ui/Backlog.tsx'
 import { Board } from './ui/Board.tsx'
 import { CommandPalette } from './ui/CommandPalette.tsx'
@@ -42,6 +45,13 @@ export function App() {
       // path, which cannot be driven through the native directory picker.
       ;(window as unknown as Record<string, unknown>).__scrumit = {
         openHandleAsRepo,
+        // Simulate a browser that cannot clone a FileSystemDirectoryHandle:
+        // the record stays, the handle does not.
+        dropHandles: async () => {
+          await db.repos.toCollection().modify((record) => {
+            delete record.handle
+          })
+        },
         stats: () => ({
           externalUpdates: externalUpdates.value,
           watching: watching.value,
@@ -148,11 +158,15 @@ export function App() {
         <div class="flex shrink-0 items-center gap-2 border-b border-line bg-warn-soft px-3 py-1.5">
           <IconWarn size={13} />
           <span class="text-[11.5px] text-ink-2">
-            scrumit is showing the last saved index. It cannot write to this folder
-            until you grant access in this browser session.
+            {handleLost.value
+              ? 'scrumit is showing the last saved view. This browser cannot remember the folder handle, so open the folder again to write.'
+              : 'scrumit is showing the last saved index. It cannot write to this folder until you grant access in this browser session.'}
           </span>
-          <Btn class="ml-auto shrink-0" onClick={() => void reconnect()}>
-            Grant access
+          <Btn
+            class="ml-auto shrink-0"
+            onClick={() => void (handleLost.value ? addLocalRepo() : reconnect())}
+          >
+            {handleLost.value ? 'Open the folder again' : 'Grant access'}
           </Btn>
         </div>
       ) : null}

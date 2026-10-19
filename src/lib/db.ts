@@ -9,6 +9,12 @@ export interface RepoRecord extends RepoMeta {
    * pointer, not an authorisation.
    */
   handle?: FileSystemDirectoryHandle
+  /**
+   * False when the browser exposes a handle but refuses to structured-clone it
+   * into IndexedDB. The repo still opens for the session and the cached board
+   * survives a reload; the folder simply has to be reopened next time.
+   */
+  handlePersisted?: boolean
 }
 
 export interface PrefsRecord {
@@ -68,8 +74,42 @@ export async function listRepos(): Promise<RepoRecord[]> {
   })
 }
 
-export async function putRepo(record: RepoRecord): Promise<void> {
-  await db.repos.put(record)
+export function isDataCloneError(error: unknown): boolean {
+  if (typeof DOMException !== 'undefined' && error instanceof DOMException) {
+    return error.name === 'DataCloneError'
+  }
+  return (
+    error instanceof Error &&
+    (error.name === 'DataCloneError' || /could not be cloned|not cloneable/i.test(error.message))
+  )
+}
+
+export type RepoPut = (record: RepoRecord) => Promise<unknown>
+
+/**
+ * Store the registry record, degrading gracefully when the handle cannot be
+ * cloned.
+ *
+ * Safari can expose a `FileSystemDirectoryHandle` from a drop without allowing
+ * it to be structured-cloned. A repo that throws on add is worse than one that
+ * cannot be remembered, so the handle is dropped on `DataCloneError` and the
+ * record is flagged instead. The session keeps the live handle in memory.
+ */
+export async function persistRepo(record: RepoRecord, put: RepoPut): Promise<RepoRecord> {
+  try {
+    await put(record)
+    return record.handle ? { ...record, handlePersisted: true } : record
+  } catch (error) {
+    if (!isDataCloneError(error) || !record.handle) throw error
+    const fallback: RepoRecord = { ...record, handlePersisted: false }
+    delete fallback.handle
+    await put(fallback)
+    return fallback
+  }
+}
+
+export async function putRepo(record: RepoRecord): Promise<RepoRecord> {
+  return persistRepo(record, (next) => db.repos.put(next))
 }
 
 export async function removeRepo(id: string): Promise<void> {
