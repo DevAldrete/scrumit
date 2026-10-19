@@ -1,7 +1,7 @@
 ---
 id: ISSUE-1
 title: Implement the scrumit sprint CLI and skill
-status: doing
+status: done
 type: story
 epic: EPIC-01
 sprint: 2026-S01
@@ -29,3 +29,9 @@ The skill is the operating manual on top of that CLI.
 - [ ] Blocked tasks are expressed with `blocked_by`; no `blocked` status is invented.
 - [ ] The skill at `skills/scrumit-sprint/` teaches solo and orchestrated workflows, and installs cleanly with `scrumit skill install`.
 - [ ] Tests cover claim, finish, block, validation, concurrency, and body preservation.
+
+## Delivery
+
+- Commits: `fba3215`, `0491e26`, `6885048`, `c9628a6`, `5a556df`
+- Summary: Sprint CLI, scrumit-sprint skill, and browser skill writer
+- Checks: npm run check (70 tests), npm run smoke
