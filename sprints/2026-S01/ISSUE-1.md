@@ -1,12 +1,13 @@
 ---
 id: ISSUE-1
 title: Implement the scrumit sprint CLI and skill
-status: todo
+status: doing
 type: story
 epic: EPIC-01
 sprint: 2026-S01
 points: 5
 priority: 1
+assignee: agent-opencode
 labels: [agents, tooling]
 created: 2026-10-19
 updated: 2026-10-19
