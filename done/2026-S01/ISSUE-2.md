@@ -22,10 +22,10 @@ and how an orchestrator delegates a task to a child agent.
 
 ## Acceptance criteria
 
-- [ ] `docs/CLI.md` covers installation, commands, options, JSON, exit codes, environment variables, and troubleshooting.
-- [ ] The README links to the CLI docs and the skill.
-- [ ] The skill references the CLI rather than duplicating an inconsistent command set.
-- [ ] The browser can write the same skill into a repository from Settings → AI agents.
+- [x] `docs/CLI.md` covers installation, commands, options, JSON, exit codes, environment variables, and troubleshooting.
+- [x] The README links to the CLI docs and the skill.
+- [x] The skill references the CLI rather than duplicating an inconsistent command set.
+- [x] The browser can write the same skill into a repository from Settings → AI agents.
 
 ## Delivery
 
