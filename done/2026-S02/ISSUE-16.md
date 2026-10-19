@@ -20,10 +20,10 @@ The board currently treats every backlog/todo task as ready, even when its sprin
 
 ## Acceptance criteria
 
-- [ ] A task in a planned or closed sprint is not listed as ready.
-- [ ] "scrumit claim" refuses a task in a planned or closed sprint with a clear message.
-- [ ] A task with no sprint remains claimable (backlog work).
-- [ ] Tests cover planned, active, and closed sprints.
+- [x] A task in a planned or closed sprint is not listed as ready.
+- [x] "scrumit claim" refuses a task in a planned or closed sprint with a clear message.
+- [x] A task with no sprint remains claimable (backlog work).
+- [x] Tests cover planned, active, and closed sprints.
 
 ## Delivery
 
