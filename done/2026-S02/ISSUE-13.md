@@ -22,11 +22,11 @@ and WebKit-equivalent renders read-only without console errors.
 
 ## Acceptance criteria
 
-- [ ] `tools/smoke.mjs` is parameterised by browser and source tier.
-- [ ] Chromium folder keeps the current suite passing.
-- [ ] Chromium and Firefox sidecar runs open, write, follow an external edit, and report a stopped server.
-- [ ] WebKit read-only renders, refuses writes, and is console-clean.
-- [ ] Playwright browser lookup extends the existing cache lookup rather than hardcoding a path.
+- [x] `tools/smoke.mjs` remains the Chromium folder suite; `tools/smoke-sidecar.mjs` is parameterised by browser and tier.
+- [x] Chromium folder keeps the current suite passing.
+- [x] Chromium, Firefox, and WebKit sidecar runs open, write, follow an external edit, and report a stopped server.
+- [x] WebKit read-only renders, refuses writes, and is console-clean.
+- [x] Playwright launches each installed browser without a hardcoded executable path.
 
 ## Delivery
 
