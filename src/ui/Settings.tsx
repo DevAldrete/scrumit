@@ -30,6 +30,7 @@ import {
   watching,
   wipeLocalData,
   writeAgentGuide,
+  writeAgentSkill,
 } from '../lib/store.ts'
 import { Btn, Chip, Kbd, tintStyle } from './primitives.tsx'
 import { IconCheck, IconRefresh, IconTerminal, IconTrash } from './icons.tsx'
@@ -431,6 +432,7 @@ export function Settings() {
 
 function AgentSection() {
   const [copied, setCopied] = useState(false)
+  const [skillDir, setSkillDir] = useState('.skills')
 
   async function copyPointer() {
     try {
@@ -481,6 +483,39 @@ function AgentSection() {
               'Copy the pointer'
             )}
           </Btn>
+        </div>
+
+        <div class="border-t border-line pt-2.5">
+          <p class="text-[11.5px] leading-snug text-ink-3">
+            The <code>scrumit-sprint</code> skill teaches an agent how to claim a task,
+            commit it, and keep the board's status honest. Write it into this repository
+            so the skill travels with the code.
+          </p>
+          <div class="mt-1.5 flex flex-wrap items-end gap-2">
+            <label class="flex min-w-[180px] flex-1 flex-col gap-1">
+              <span class="label">skill folder</span>
+              <input
+                class="field"
+                value={skillDir}
+                onInput={(event) => setSkillDir(event.currentTarget.value)}
+                placeholder=".skills"
+              />
+            </label>
+            <Btn
+              variant="primary"
+              disabled={permission.value !== 'granted'}
+              onClick={() => void writeAgentSkill(skillDir)}
+            >
+              <IconTerminal size={13} />
+              Write the sprint skill
+            </Btn>
+          </div>
+          <p class="mt-1 text-[11px] leading-snug text-ink-4">
+            OpenCode discovers <code>.skills</code> when{' '}
+            <code>opencode.jsonc</code> lists it. The CLI writes the same files with{' '}
+            <code>scrumit skill install</code>; use <code>--dir .opencode/skills</code>{' '}
+            for the automatic location.
+          </p>
         </div>
 
         <p class="text-[11px] leading-snug text-ink-4">

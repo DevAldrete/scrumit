@@ -26,6 +26,7 @@ import {
 } from './db.ts'
 import { DemoSource } from './demo.ts'
 import { FsaSource, fsaSupported, pickDirectory } from './fsa.ts'
+import { loadSprintSkillFiles, SPRINT_SKILL_FOLDER } from './skill.ts'
 import { personHue, todayISO } from './format.ts'
 import type {
   BoardColumnSpec,
@@ -724,6 +725,37 @@ export async function writeAgentGuide(): Promise<void> {
     noteSelfWrite(AGENT_GUIDE_PATH)
     notify(`Wrote ${AGENT_GUIDE_PATH}`, 'ok')
     await rescan()
+  } catch (error) {
+    notify(describeError(error), 'error')
+  }
+}
+
+/**
+ * Write the agent skill into the repository, so a checkout can use it without
+ * running the CLI first. The target mirrors the default of
+ * `scrumit skill install`: `.skills/scrumit-sprint/`.
+ */
+export async function writeAgentSkill(targetDir = '.skills'): Promise<void> {
+  const src = source
+  const repo = activeRepo.value
+  if (!src || !repo) return
+  if (permission.value !== 'granted') {
+    notify('scrumit cannot write to this folder until you grant access.', 'error')
+    return
+  }
+  const base = targetDir.replace(/\/+$/, '')
+  if (base === '') {
+    notify('Choose a folder for the skill.', 'error')
+    return
+  }
+  try {
+    const files = await loadSprintSkillFiles()
+    for (const file of files) {
+      const path = `${base}/${SPRINT_SKILL_FOLDER}/${file.path}`
+      await src.write(path, file.text)
+      noteSelfWrite(path)
+    }
+    notify(`Wrote ${files.length} files to ${base}/${SPRINT_SKILL_FOLDER}`, 'ok')
   } catch (error) {
     notify(describeError(error), 'error')
   }
