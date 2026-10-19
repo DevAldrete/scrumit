@@ -218,11 +218,18 @@ export class HttpSource implements RepoSource {
             index = buffer.indexOf('\n\n')
           }
         }
+        // A clean end of stream still means the server went away.
+        if (!stopped) {
+          this.#onConnection?.(false, 'The local server is not responding.')
+        }
       } catch (error) {
         if (!stopped) {
+          const text = error instanceof Error ? error.message : String(error)
           this.#onConnection?.(
             false,
-            error instanceof Error ? error.message : String(error),
+            /fetch|network|terminated|aborted/i.test(text)
+              ? 'The local server is not responding.'
+              : text,
           )
         }
       }

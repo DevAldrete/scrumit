@@ -23,7 +23,7 @@ high-value features while the file format is already open.
 
 A static Preact SPA over one interface, `RepoSource`, with two implementations:
 `FsaSource` (File System Access) and `DemoSource` (an in-memory map mirrored into
-Dexie). 53 unit tests, plus a browser walkthrough that drives a real repository
+Dexie). 122 unit tests, plus a browser walkthrough that drives a real repository
 built over the Origin Private File System.
 
 Four things are Chromium-only today, and only one of them actually matters:
@@ -374,7 +374,7 @@ browser name and a source tier. Minimum matrix before shipping Phase 1:
 already finds Chromium in the Playwright cache — extend that lookup rather than
 hardcoding a path. Note in the PR that Playwright's WebKit is not Safari.
 
-**9c. Gates.** `npm run check` must stay at 53+ tests with no test weakened.
+**9c. Gates.** `npm run check` must stay at 122+ tests with no test weakened.
 `npm run smoke` must stay console-clean in every row of the matrix it can run.
 
 ---
@@ -395,17 +395,17 @@ Do not start Phase 2 before Phase 1 is merged. Do not start §8 wins before Phas
 
 ## 11. Definition of done for this plan
 
-- [ ] `showDirectoryPicker` is no longer the only way to write.
-- [ ] Firefox can complete the full read/write loop (via the sidecar).
-- [ ] WebKit-equivalent can render a repo and is visibly, unambiguously read-only.
-- [ ] Every adapter passes the same contract suite.
-- [ ] A stale `PUT` returns `409` and the UI says what happened.
-- [ ] `canWrite: false` makes every mutation a no-op with one explanation, proven
+- [x] `showDirectoryPicker` is no longer the only way to write.
+- [x] Firefox can complete the full read/write loop (via the sidecar).
+- [x] WebKit-equivalent can render a repo and is visibly, unambiguously read-only.
+- [x] Every adapter passes the same contract suite.
+- [x] A stale `PUT` returns `409` and the UI says what happened.
+- [x] `canWrite: false` makes every mutation a no-op with one explanation, proven
       by a test.
-- [ ] `README.md`, `docs/ARCHITECTURE.md` and `llms.txt` agree with the code —
+- [x] `README.md`, `docs/ARCHITECTURE.md` and `llms.txt` agree with the code —
       including the browser-support table, which is the first thing a new user
       reads and the easiest thing to leave lying.
-- [ ] `llms.txt` gains a note on the `409` behaviour, so an agent knows to re-read
+- [x] `llms.txt` gains a note on the `409` behaviour, so an agent knows to re-read
       rather than overwrite.
 
 ---

@@ -22,6 +22,8 @@
     "cli": "node cli/scrumit.mjs",
     "test": "node --test \"tools/*.test.mjs\"",
     "smoke": "node tools/smoke.mjs",
+    "smoke:sidecar": "npm run build && node tools/smoke-sidecar.mjs --tier sidecar",
+    "smoke:matrix": "npm run build && node tools/smoke-sidecar.mjs --matrix",
     "probe": "node tools/probe-support.mjs",
     "check": "tsc -b && node --test \"tools/*.test.mjs\""
   },

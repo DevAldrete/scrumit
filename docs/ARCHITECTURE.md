@@ -27,19 +27,25 @@ and an editor over it.
   │      │                                                   │
   │      ▼                                                   │
   │   RepoSource (interface)                                 │
-  │      ├── FsaSource   → File System Access API (real dir) │
-  │      └── Demosource  → seeded in-memory files            │
+  │      ├── FsaSource      → File System Access (real dir)  │
+  │      ├── HttpSource     → local sidecar over HTTP        │
+  │      ├── ReadOnlySource → a folder it cannot write       │
+  │      └── DemoSource     → seeded in-memory files         │
   │                                                          │
   │   Dexie (IndexedDB) ─── handles, registry, prefs, cache   │
   └──────────────────────────────────────────────────────────┘
               │
               ▼
-  your repo on disk            git in your terminal
-  .scrumit/  backlog/  ...     (commit / branch / push)
+  your repo on disk            scrumit serve (127.0.0.1)
+  .scrumit/  backlog/  ...     HTTP API + SSE + git later
 ```
 
-Two adapters behind one `RepoSource` interface. The demo adapter makes the app
-fully usable with no folder picked, and keeps UI work independent of FS quirks.
+Four adapters behind one `RepoSource` interface, each declaring one
+`capabilities` object. Chromium can open a folder writable; every browser can
+open one read-only; the local sidecar makes any browser writable and is the only
+tier that can offer real git. The demo adapter keeps UI work independent of FS
+quirks. The store gates every mutation on the resolved capability, so a
+read-only tier is inert rather than silently failing to save.
 
 ### Why Dexie, given the repo holds the data?
 
@@ -62,6 +68,13 @@ Dexie can be re-used later but need a user gesture to re-grant
 (`handle.requestPermission()`), and the browser may silently downgrade to
 `prompt`. The app therefore always asks for permission at the moment of use and
 degrades to read-only with a visible banner rather than throwing.
+
+Some browsers expose a handle but refuse to structured-clone it into IndexedDB
+(WebKit, measured). `putRepo()` retries without the handle and records
+`handlePersisted: false`; the cached board stays readable and the folder is
+reopened on the next session. A `RepoSource` also declares `capabilities`, and
+the store combines them with permission into one answer. Every mutating entry
+point refuses before it touches optimistic state.
 
 ## 3. Repository layout
 
@@ -175,6 +188,14 @@ user action → store (optimistic) → RepoSource.write() → Dexie cache update
   drag — write immediately, because the file moves when they do.
 - A write is *create file* or *replace file*. Never a rewrite of the repo.
 - Every write records its path in a short-lived self-write ledger (§4, inbound).
+- The HTTP tier is the exception to "last write wins". `HttpSource` remembers
+  the ETag of every file it read and sends it as `base`; a stale `base` returns
+  `409` and the current text. The store keeps the local text, marks the card, and
+  offers **Keep mine** / **Take theirs**. It never auto-resolves: the agent and
+  the human may both be right.
+- A read-only source refuses every mutation through the capability guard. The
+  UI hides composers, disables Sortable, and makes the panel read-only rather
+  than showing a change it cannot save.
 
 ### Inbound: everything else writing
 
@@ -211,6 +232,11 @@ So the interesting direction of travel is work arriving that scrumit did not do.
 - Where `FileSystemObserver` is unavailable, the app falls back to looking again
   when the tab returns after more than a couple of seconds away. Slower, but the
   user-visible promise is the same: the board is not stale.
+- The sidecar watches the repository with `fs.watch` on the server and streams
+  changes over SSE. `HttpSource.watch()` maps those events into the same
+  `WatchEvent` shape, so the queue, debounce, self-write ledger, and diff code
+  above the adapter are unchanged. It reconnects with backoff and reports one
+  legible outage rather than throwing on every write.
 
 `git` stays out of process. scrumit reads the branch name from `.git/HEAD` and
 makes no attempt at `git status`.
@@ -226,10 +252,16 @@ makes no attempt at `git status`.
 | `src/lib/paths.ts` | Where an artefact *should* live, given its fields. |
 | `src/lib/agentGuide.ts` | The per-repository agent guide: live context + the spec. |
 | `src/lib/db.ts` | Dexie schema: repos+handles, prefs, snapshot cache, drafts. |
-| `src/lib/source.ts` | `RepoSource` interface, the directory scan, the write/move helper. |
+| `src/lib/source.ts` | `RepoSource` interface, `Capabilities`, the directory scan, the write/move helper. |
 | `src/lib/fsa.ts` | File System Access adapter: walk, read, write, permissions, `FileSystemObserver`. |
+| `src/lib/http.ts` | Sidecar adapter: ETag conflicts, SSE watching, typed outage errors. |
+| `src/lib/readonly.ts` | Read-only folder adapter over a `FileList` or drop entries. |
 | `src/lib/demo.ts` | Seeded in-memory adapter, mirrored into Dexie. |
+| `src/lib/capabilities.ts` | The one permission + capability combination and refusal copy. |
+| `src/lib/conflicts.ts` | Overlay local text over a rescan while a 409 is unresolved. |
+| `src/lib/validate.ts` | Pure artefact validation for the Flow view. |
 | `src/lib/store.ts` | Signals: active repo, artefacts, filters, selection, all mutations. |
+| `src/lib/skill.ts` | Lazy bundle of the `scrumit-sprint` skill files for the browser writer. |
 | `src/lib/metrics.ts` | Columns, sprint progress, burndown, velocity, flow, hygiene. |
 | `src/lib/changes.ts` | Diffing two scans into a sentence a human can read. |
 | `src/lib/md.ts` | Excerpts and checklist counts — no dependencies. |
@@ -239,8 +271,11 @@ makes no attempt at `git status`.
 | `src/ui/*` | Shell, board, backlog, sprint and epic views, flow, settings, palette. |
 | `src/ui/charts.tsx` | Burndown, velocity bars, flow band — hand-drawn SVG, no chart library. |
 | `src/themes.css` | Token defaults + 23 community themes. |
-| `tools/*.test.mjs` | Format and adapter tests (`node --test`). |
-| `tools/smoke.mjs` | Real-browser walkthrough with screenshots. |
+| `tools/*.test.mjs` | Format, adapter, contract, CLI, and sidecar tests (`node --test`). |
+| `tools/smoke.mjs` | Chromium walkthrough with screenshots. |
+| `tools/smoke-sidecar.mjs` | Chromium/Firefox/WebKit sidecar matrix and WebKit read-only run. |
+| `cli/*`, `skills/scrumit-sprint/*` | The sprint CLI and its agent skill. |
+| `server/*` | The local sidecar: HTTP API, SSE, containment, atomic writes. |
 
 ### Decisions worth knowing
 
@@ -304,13 +339,17 @@ grepping the build output.
 
 ## 6. Verification
 
-Two layers, both runnable with `npm run check` and `npm run smoke`.
+Three layers: `npm run check`, `npm run smoke`, and `npm run smoke:matrix`.
 
-**Format and adapter tests** (`node --test`, 26 assertions) cover the things that
-would damage a checkout: front-matter round-tripping, byte-preservation of the
-body, lenient parsing of hand-written shorthand, CRLF and BOM, path derivation
-and file moves, config defaults, WIP arithmetic, and the File System Access
-adapter driven against a mock of the browser API — including a directory that
+**Format, adapter, and tooling tests** (`node --test`, 122 assertions) cover the
+things that would damage a checkout: front-matter round-tripping,
+byte-preservation of the body, lenient parsing of hand-written shorthand, CRLF
+and BOM, path derivation and file moves, config defaults, WIP arithmetic, the
+File System Access adapter against a mock of the browser API, the read-only
+adapter, `HttpSource` against a live sidecar, a shared contract across all three
+source adapters, the sprint CLI against real git repositories (including two
+concurrent claims), and the sidecar's auth, containment, ETag, and SSE
+behaviour. The File System Access mock covers a directory that
 creates its own parents, a move that must delete the old file, and a file that
 throws on read and must be reported rather than dropped.
 
@@ -319,6 +358,14 @@ a card between columns and confirms the move survives a reload, walks all six
 views, switches themes, exercises the command palette, and fails on any console
 error, page exception or failed request. It also writes a screenshot of every
 view, which is how the design gets reviewed rather than assumed.
+
+**The sidecar matrix** (`npm run smoke:matrix`) runs the built app in Chromium,
+Firefox, and WebKit against a real temp repository. In each browser it connects
+with the printed token, changes a card through the UI, confirms the file on
+disk, follows an external write, stops the server, and asserts the failure is
+legible. It then opens a read-only fixture in WebKit and proves the composers,
+drag, and panel edits are inert. Playwright's WebKit is not Safari, but it is the
+closest automated equivalent.
 
 ## 7. Design language
 
@@ -345,17 +392,21 @@ prefs and snapshot cache, 23 themes, kanban board with drag and drop and WIP
 limits, dense backlog with bulk scheduling, full issue panel with markdown
 preview, sprint close with carry-over, epics with progress, the flow view, the
 command palette, unsaved-draft recovery, live filesystem watching with a
-plain-language change report, and a generated agent guide.
+plain-language change report, a generated agent guide, the `scrumit` sprint CLI
+and skill, the capability model, read-only folder access, artefact validation,
+the local sidecar with ETag conflicts and SSE, and the cross-adapter contract
+suite.
 
-**Next** — issue templates from `.scrumit/templates`; an undo stack; bulk edit
-across a multi-selection; saved filter views; a change log of recent external
-edits rather than only the latest toast.
+**Next** — the git changes view (status, diff, commit) over the sidecar; issue
+templates from `.scrumit/templates`; an undo stack; bulk edit across a
+multi-selection; saved filter views; a change log of recent external edits
+rather than only the latest toast.
 
-**Later** — local git sidecar (`status`, `diff`, `log`, `commit`, `checkout`);
-burndown from recorded sprint history rather than derivation; a dependency graph
-for `blocked_by`; CSV and Notion import; a printable sprint review; a plugin API
-over the `RepoSource` interface.
+**Later** — merge/rebase/push in the app (deliberately not until conflict
+handling is honest); burndown from recorded sprint history rather than
+derivation; a dependency graph for `blocked_by`; CSV and Notion import; a
+printable sprint review; a plugin API over the `RepoSource` interface.
 
 The cross-browser story — writable folders outside Chromium, the local sidecar,
-read-only fallback, and the adapter conformance suite — is planned in
-[`PLAN.md`](PLAN.md).
+read-only fallback, and the adapter conformance suite — is implemented; the
+remaining phases are tracked in [`PLAN.md`](PLAN.md).

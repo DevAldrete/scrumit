@@ -83,6 +83,20 @@ The last row is why adding a repository no longer throws in Safari: the handle i
 dropped and the cached board stays readable. Writable folders in Firefox and
 Safari are the sidecar's job, not a polyfill's.
 
+| Tier | How to open it | Write | Watch | Git |
+| --- | --- | --- | --- | --- |
+| Folder | Chromium directory picker | yes | `FileSystemObserver` | branch |
+| Sidecar | `scrumit serve --repo .` | yes | SSE from `fs.watch` | full (next) |
+| Read-only | folder input or drop in any browser | no | focus refresh | branch |
+| Demo | bundled | in-memory | none | none |
+
+The sidecar runs the same edit/write/external-change/stopped-server walkthrough
+in Chromium, Firefox, and WebKit:
+
+```sh
+npm run smoke:matrix
+```
+
 ## Letting an agent run the board
 
 Every card is a file, so an agent that can read and write markdown can run this

@@ -258,6 +258,7 @@ export async function startServer(options = {}) {
   const port = options.port ?? 5180
   const clients = new Set()
   const context = { root, token, dist, clients }
+  let stopped = false
 
   const server = createServer((req, res) => {
     try {
@@ -303,6 +304,8 @@ export async function startServer(options = {}) {
     url,
     dist,
     stop: async () => {
+      if (stopped) return
+      stopped = true
       stopWatch()
       for (const client of clients) {
         clearInterval(client.heartbeat)
@@ -313,7 +316,12 @@ export async function startServer(options = {}) {
         }
       }
       clients.clear()
-      await new Promise((resolveClose) => server.close(resolveClose))
+      await new Promise((resolveClose) => {
+        server.close(resolveClose)
+        // Keep-alive sockets from a browser can otherwise hold the process
+        // open after the page is gone.
+        server.closeAllConnections?.()
+      })
     },
   }
 }

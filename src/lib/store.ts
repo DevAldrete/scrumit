@@ -348,7 +348,7 @@ export async function startWatching(): Promise<void> {
       }
       if (serverDownNotified) return
       serverDownNotified = true
-      notify(message ?? 'The local server is not responding.', 'error')
+      notify(message || 'The local server is not responding.', 'error')
     })
   }
   try {
