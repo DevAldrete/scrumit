@@ -21,9 +21,9 @@ answer instead of trusting the table in the plan.
 
 ## Acceptance criteria
 
-- [ ] `tools/probe-support.mjs` prints `showDirectoryPicker`, `FileSystemObserver`, OPFS, `getAsFileSystemHandle`, `color-mix`, and handle cloning per browser.
-- [ ] It runs against Chromium, Firefox, and WebKit using the installed Playwright browsers.
-- [ ] The measured result is recorded in the PR and reflected in README support copy.
+- [x] `tools/probe-support.mjs` prints `showDirectoryPicker`, `FileSystemObserver`, OPFS, `getAsFileSystemHandle`, `color-mix`, and handle cloning per browser.
+- [x] It runs against Chromium, Firefox, and WebKit using the installed Playwright browsers.
+- [x] The measured result is recorded in the PR and reflected in README support copy.
 
 ## Delivery
 
