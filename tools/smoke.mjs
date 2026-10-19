@@ -128,6 +128,8 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle0' })
     await waitForText('scrumit')
     await waitForText('Open a repository folder')
+    await waitForText('Open a folder read-only')
+    await waitForText('Drop a folder here')
     await shot('01-welcome')
   })
 

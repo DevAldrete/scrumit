@@ -105,7 +105,7 @@ export interface RepoMeta {
   name: string
   /** Display path. Demo repos report `demo://`. */
   path: string
-  kind: 'fsa' | 'demo'
+  kind: 'fsa' | 'demo' | 'readonly' | 'http'
   color: number
   createdAt: number
   lastOpenedAt: number

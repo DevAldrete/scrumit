@@ -26,6 +26,7 @@ import {
 } from './db.ts'
 import { DemoSource } from './demo.ts'
 import { FsaSource, fsaSupported, pickDirectory } from './fsa.ts'
+import { ReadOnlySource, type ReadOnlyEntry } from './readonly.ts'
 import { loadSprintSkillFiles, SPRINT_SKILL_FOLDER } from './skill.ts'
 import type { ValidationIssue } from './validate.ts'
 import { personHue, todayISO } from './format.ts'
@@ -741,6 +742,34 @@ export async function addLocalRepo(): Promise<void> {
       ? ['This browser cannot remember the folder — you will need to open it again next session.']
       : undefined,
   )
+}
+
+/**
+ * Open a folder the browser can only read. This is the Safari/Firefox path:
+ * the board and every artefact are real, but mutations are refused by the same
+ * capability guard as any other read-only source.
+ */
+export async function openReadOnlyRepo(
+  entries: readonly ReadOnlyEntry[],
+  name: string,
+): Promise<void> {
+  if (entries.length === 0) {
+    notify('That folder has no readable files.', 'error')
+    return
+  }
+  const src = new ReadOnlySource(entries, name)
+  const record: RepoRecord = {
+    id: `readonly-${crypto.randomUUID()}`,
+    name,
+    path: name,
+    kind: 'readonly',
+    color: personHue(name),
+    createdAt: Date.now(),
+    lastOpenedAt: Date.now(),
+    handlePersisted: false,
+  }
+  await openRepo(record, { source: src, transient: true })
+  notify(`Opened ${name} read-only`, 'info')
 }
 
 /**

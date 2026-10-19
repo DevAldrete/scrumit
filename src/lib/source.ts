@@ -17,7 +17,7 @@ export interface WatchEvent {
 export type StopWatching = () => void
 
 export interface RepoSource {
-  readonly kind: 'fsa' | 'demo'
+  readonly kind: 'fsa' | 'demo' | 'readonly' | 'http'
   /** Human-readable origin, shown in the repo switcher. */
   readonly label: string
   /** What this source can actually do. The store gates every write on it. */

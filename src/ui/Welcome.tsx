@@ -1,10 +1,13 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { relativeTime } from '../lib/format.ts'
 import { fsaSupported } from '../lib/fsa.ts'
+import { entriesFromFiles, type ReadOnlyEntry } from '../lib/readonly.ts'
 import {
   addLocalRepo,
   forgetRepo,
   openDemo,
+  openHandleAsRepo,
+  openReadOnlyRepo,
   openRepo,
   repos,
 } from '../lib/store.ts'
@@ -27,7 +30,111 @@ labels: [reliability]
 - [ ] Retry at 1s, 8s, 60s, then dead-letter
 - [ ] Duplicate deliveries below 0.01%`
 
+interface DirectoryItem extends DataTransferItem {
+  getAsFileSystemHandle?: () => Promise<FileSystemHandle | null>
+}
+
+function readAllEntries(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
+  return new Promise((resolve, reject) => {
+    const out: FileSystemEntry[] = []
+    const next = () => {
+      reader.readEntries((batch) => {
+        if (batch.length === 0) {
+          resolve(out)
+          return
+        }
+        out.push(...batch)
+        next()
+      }, reject)
+    }
+    next()
+  })
+}
+
+async function walkEntry(
+  entry: FileSystemEntry,
+  prefix: string,
+  out: ReadOnlyEntry[],
+): Promise<void> {
+  if (entry.isFile) {
+    const file = await new Promise<File>((resolve, reject) => {
+      ;(entry as FileSystemFileEntry).file(resolve, reject)
+    })
+    out.push({ path: `${prefix}${entry.name}`, file })
+    return
+  }
+  if (entry.isDirectory) {
+    const reader = (entry as FileSystemDirectoryEntry).createReader()
+    const children = await readAllEntries(reader)
+    for (const child of children) {
+      await walkEntry(child, `${prefix}${entry.name}/`, out)
+    }
+  }
+}
+
+/** Chromium can turn a dropped folder into a writable handle. Try that first. */
+async function handleFromDrop(
+  transfer: DataTransfer,
+): Promise<FileSystemDirectoryHandle | null> {
+  for (const item of Array.from(transfer.items)) {
+    const get = (item as DirectoryItem).getAsFileSystemHandle
+    if (typeof get !== 'function') return null
+    try {
+      const handle = await get.call(item)
+      if (handle?.kind === 'directory') return handle as FileSystemDirectoryHandle
+    } catch {
+      // Fall through to the read-only entry walk.
+    }
+  }
+  return null
+}
+
+async function entriesFromDrop(transfer: DataTransfer): Promise<ReadOnlyEntry[]> {
+  const entries: ReadOnlyEntry[] = []
+  for (const item of Array.from(transfer.items)) {
+    const entry = item.webkitGetAsEntry?.()
+    if (entry) await walkEntry(entry, '', entries)
+  }
+  if (entries.length > 0) return entries
+  return entriesFromFiles(Array.from(transfer.files))
+}
+
+function dropName(transfer: DataTransfer): string {
+  for (const item of Array.from(transfer.items)) {
+    const entry = item.webkitGetAsEntry?.()
+    if (entry?.isDirectory) return entry.name
+  }
+  const first = transfer.files[0]
+  return first?.webkitRelativePath.split('/')[0] || 'Read-only folder'
+}
+
 export function Welcome() {
+  const input = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
+
+  useEffect(() => {
+    // `webkitdirectory` is widely supported but not in Preact's JSX types.
+    input.current?.setAttribute('webkitdirectory', '')
+  }, [])
+
+  async function onDrop(event: DragEvent): Promise<void> {
+    event.preventDefault()
+    setDragging(false)
+    const transfer = event.dataTransfer
+    if (!transfer) return
+
+    const handle = await handleFromDrop(transfer)
+    if (handle) {
+      await openHandleAsRepo(handle, handle.name)
+      return
+    }
+
+    const entries = await entriesFromDrop(transfer)
+    if (entries.length > 0) {
+      await openReadOnlyRepo(entries, dropName(transfer))
+    }
+  }
+
   return (
     <div class="scroll-y h-full">
       <div class="grid min-h-full place-items-center px-6 py-10">
@@ -55,17 +162,62 @@ export function Welcome() {
             </p>
 
             <div class="mt-7 flex flex-wrap gap-2">
-              <Btn variant="primary" onClick={() => void addLocalRepo()}>
+              {fsaSupported() ? (
+                <Btn variant="primary" onClick={() => void addLocalRepo()}>
+                  <IconFolder size={14} />
+                  Open a repository folder
+                </Btn>
+              ) : null}
+              <Btn
+                variant={fsaSupported() ? undefined : 'primary'}
+                onClick={() => input.current?.click()}
+              >
                 <IconFolder size={14} />
-                Open a repository folder
+                Open a folder read-only
               </Btn>
               <Btn onClick={() => void openDemo()}>Explore the demo repo</Btn>
+            </div>
+
+            <input
+              ref={input}
+              type="file"
+              multiple
+              class="hidden"
+              aria-label="Open a folder read-only"
+              onChange={(event) => {
+                const files = event.currentTarget.files
+                if (files && files.length > 0) {
+                  const name =
+                    Array.from(files)[0]?.webkitRelativePath.split('/')[0] || 'Read-only folder'
+                  void openReadOnlyRepo(entriesFromFiles(Array.from(files)), name)
+                }
+                event.currentTarget.value = ''
+              }}
+            />
+
+            <div
+              class={`mt-3 max-w-[52ch] rounded-sm border border-dashed px-3 py-2 text-[11.5px] leading-relaxed transition-colors ${
+                dragging
+                  ? 'border-accent bg-accent-soft text-ink-2'
+                  : 'border-line-2 text-ink-4'
+              }`}
+              onDragOver={(event) => {
+                event.preventDefault()
+                setDragging(true)
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(event) => void onDrop(event as unknown as DragEvent)}
+            >
+              Drop a folder here.{' '}
+              {fsaSupported()
+                ? 'Chromium can open a dropped folder writable; anything else opens read-only.'
+                : 'It opens read-only in this browser. Run `npx scrumit serve` for a writable local server.'}
             </div>
 
             <p class="mt-3 max-w-[52ch] text-[11.5px] leading-relaxed text-ink-4">
               {fsaSupported()
                 ? 'Your files stay on disk. scrumit reads and writes them directly and keeps only folder handles and a cached index in your browser.'
-                : 'This browser cannot open local folders — folder access needs Chrome, Edge or another Chromium browser. The demo repo works everywhere.'}
+                : 'This browser can open a folder read-only. Writable folders need Chromium today, or the local sidecar (`npx scrumit serve`) from any modern browser. The demo repo works everywhere.'}
             </p>
 
             {repos.value.length > 0 ? <RecentRepos /> : null}
