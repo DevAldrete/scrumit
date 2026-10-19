@@ -1,7 +1,7 @@
 ---
 id: ISSUE-10
 title: Build the local sidecar server core
-status: doing
+status: done
 type: story
 epic: EPIC-02
 sprint: 2026-S02
@@ -10,7 +10,7 @@ priority: 1
 labels: [server, security]
 created: 2026-10-19
 updated: 2026-10-19
-order: 10
+order: 100
 blocked_by: [ISSUE-4]
 assignee: agent-opencode
 ---
@@ -30,3 +30,9 @@ escapes.
 - [ ] Only `*.md` and `.scrumit/config.yaml` are writable; `.git/HEAD` is read-only.
 - [ ] Writes are atomic and return an ETag.
 - [ ] `GET /api/health`, `/api/files`, `/api/file`, `PUT`, `DELETE` and SSE events are implemented.
+
+## Delivery
+
+- Commits: `eb26bc3`, `66f7671`
+- Summary: Dependency-free sidecar with token auth, containment, ETags, and SSE
+- Checks: npm run check (101 tests)
