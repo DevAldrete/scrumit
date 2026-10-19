@@ -56,7 +56,7 @@ test('the skill references the CLI contract and the supporting files', () => {
 test('the CLI help exposes every lifecycle command', () => {
   const result = spawnSync(process.execPath, [CLI, 'help'], { encoding: 'utf8' })
   assert.equal(result.status, 0)
-  for (const command of ['board', 'validate', 'claim', 'finish', 'block', 'release', 'new', 'init', 'skill install']) {
+  for (const command of ['board', 'validate', 'claim', 'finish', 'block', 'release', 'new', 'init', 'serve', 'skill install']) {
     assert.ok(result.stdout.includes(command), `help is missing ${command}`)
   }
 })

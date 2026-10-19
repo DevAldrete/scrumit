@@ -9,6 +9,7 @@
   "files": [
     "dist",
     "cli",
+    "server",
     "skills",
     "llms.txt",
     "README.md",

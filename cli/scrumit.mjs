@@ -36,6 +36,10 @@ const OPTIONS = {
   json: { type: 'boolean', default: false },
   help: { type: 'boolean', short: 'h', default: false },
   version: { type: 'boolean', short: 'v', default: false },
+  port: { type: 'string' },
+  token: { type: 'string' },
+  dist: { type: 'string' },
+  quiet: { type: 'boolean', default: false },
   agent: { type: 'string' },
   force: { type: 'boolean', default: false },
   sprint: { type: 'string' },
@@ -106,6 +110,9 @@ Skill:
   scrumit skill print
   scrumit skill path
 
+Sidecar:
+  scrumit serve [--repo <path>] [--port 5180] [--token <token>] [--dist <path>] [--quiet]
+
 Repository:
   scrumit init [--project <name>] [--force]
 
@@ -155,7 +162,7 @@ function usageError(message) {
   throw new CliError(`${message}\n\nRun \`scrumit help\` for usage.`, 2)
 }
 
-function main() {
+async function main() {
   const parsed = parseArgs({
     args: process.argv.slice(2),
     options: OPTIONS,
@@ -321,6 +328,33 @@ function main() {
     usageError('new requires a subcommand: issue, epic, or sprint')
   }
 
+  if (command === 'serve') {
+    const { startServer } = await import('../server/index.mjs')
+    const info = await startServer({
+      repo: root,
+      port: values.port === undefined ? undefined : Number(values.port),
+      token: values.token,
+      dist: values.dist,
+      quiet: values.quiet,
+    })
+    if (values.json) {
+      json({ ok: true, url: info.url, repo: info.repo, token: info.token, port: info.port })
+    } else if (!values.quiet) {
+      print(`scrumit  ${info.url}`)
+      print(`  repo   ${info.repo}`)
+      print(`  token  ${info.token}`)
+      print('')
+      print('Set the same token in scrumit, or open the built app served by this process.')
+    }
+    const close = async () => {
+      await info.stop()
+      process.exit(0)
+    }
+    process.on('SIGINT', () => void close())
+    process.on('SIGTERM', () => void close())
+    return
+  }
+
   if (command === 'init') {
     const result = initBoard(root, { project: values.project, force: values.force })
     if (values.json) json({ ok: true, ...result })
@@ -358,7 +392,7 @@ function main() {
 }
 
 try {
-  main()
+  await main()
 } catch (error) {
   const asJson = process.argv.includes('--json')
   const message = error instanceof Error ? error.message : String(error)

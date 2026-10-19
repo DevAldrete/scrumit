@@ -137,6 +137,7 @@ scrumit board            # ready, in progress, blocked, review
 scrumit validate         # duplicate ids, dangling refs, path drift
 scrumit claim ACME-140 --agent agent-claude
 scrumit finish ACME-140 --to review --summary "Implemented retries"
+scrumit serve --repo .           # writable repository over HTTP, every browser
 ```
 
 Full reference, including installation in another repository, JSON output, exit

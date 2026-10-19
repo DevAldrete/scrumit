@@ -80,6 +80,48 @@ sprint skill**. It defaults to `.skills/scrumit-sprint`.
 
 ---
 
+## Local sidecar
+
+The browser app can only write to a folder through the File System Access API,
+which Firefox and Safari do not implement. The sidecar gives every browser a
+writable repository over HTTP and, later, real git.
+
+```sh
+npm run build                 # once, so the sidecar has an app to serve
+scrumit serve --repo ~/dev/acme
+```
+
+It prints the URL, the repository path, and a generated bearer token:
+
+```text
+scrumit  http://127.0.0.1:5180
+  repo   /Users/me/dev/acme
+  token  4f3a…
+```
+
+The server binds to `127.0.0.1` only, serves `dist/` and `/api` from one origin,
+and requires the token on every API request. In development, run `npm run dev`
+in a second terminal and let Vite proxy `/api` to the sidecar.
+
+```sh
+scrumit serve --port 5180 --token my-token
+scrumit serve --port 0 --json          # ephemeral port, machine-readable startup
+```
+
+Security is deliberately small:
+
+- only `*.md` and `.scrumit/config.yaml` are writable;
+- `.git/HEAD` is readable but never writable;
+- absolute paths, `..`, and symlinks that escape the repository are rejected;
+- writes are atomic;
+- `PUT` with a stale `base` returns `409` and the current text rather than
+  overwriting a concurrent edit.
+
+The app-side connection and conflict UI land in the next task; the API is
+usable directly by an agent or a script today.
+
+---
+
 ## The board
 
 ```sh
