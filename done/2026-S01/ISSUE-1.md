@@ -23,12 +23,12 @@ The skill is the operating manual on top of that CLI.
 
 ## Acceptance criteria
 
-- [ ] `scrumit board`, `claim`, `finish`, `block`, `release`, `new`, `validate`, `init`, and `skill install` work without runtime dependencies.
-- [ ] Claiming a task checks blockers, takes an atomic lock, updates `status`, `assignee`, `updated`, and commits only that task.
-- [ ] Finishing moves the file to the archive when `status: done`, records delivery commits, and releases the claim.
-- [ ] Blocked tasks are expressed with `blocked_by`; no `blocked` status is invented.
-- [ ] The skill at `skills/scrumit-sprint/` teaches solo and orchestrated workflows, and installs cleanly with `scrumit skill install`.
-- [ ] Tests cover claim, finish, block, validation, concurrency, and body preservation.
+- [x] `scrumit board`, `claim`, `finish`, `block`, `release`, `new`, `validate`, `init`, and `skill install` work without runtime dependencies.
+- [x] Claiming a task checks blockers, takes an atomic lock, updates `status`, `assignee`, `updated`, and commits only that task.
+- [x] Finishing moves the file to the archive when `status: done`, records delivery commits, and releases the claim.
+- [x] Blocked tasks are expressed with `blocked_by`; no `blocked` status is invented.
+- [x] The skill at `skills/scrumit-sprint/` teaches solo and orchestrated workflows, and installs cleanly with `scrumit skill install`.
+- [x] Tests cover claim, finish, block, validation, concurrency, and body preservation.
 
 ## Delivery
 
