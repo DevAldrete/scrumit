@@ -1,7 +1,7 @@
 ---
 id: ISSUE-13
 title: Run the sidecar browser smoke matrix
-status: doing
+status: done
 type: story
 epic: EPIC-02
 sprint: 2026-S02
@@ -10,7 +10,7 @@ priority: 2
 labels: [testing, browser]
 created: 2026-10-19
 updated: 2026-10-19
-order: 10
+order: 140
 blocked_by: [ISSUE-11, ISSUE-12]
 assignee: agent-opencode
 ---
@@ -27,3 +27,9 @@ and WebKit-equivalent renders read-only without console errors.
 - [ ] Chromium and Firefox sidecar runs open, write, follow an external edit, and report a stopped server.
 - [ ] WebKit read-only renders, refuses writes, and is console-clean.
 - [ ] Playwright browser lookup extends the existing cache lookup rather than hardcoding a path.
+
+## Delivery
+
+- Commits: `3c08d8b`, `28531a0`
+- Summary: Chromium, Firefox, and WebKit sidecar matrix plus WebKit read-only
+- Checks: npm run check (122 tests), npm run build, node tools/smoke-sidecar.mjs --matrix
