@@ -15,6 +15,9 @@ dist-ssr
 # Runtime smoke-test screenshots
 tools/shots
 
+# Locally installed agent skills (regenerate with `scrumit skill install`)
+.skills
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

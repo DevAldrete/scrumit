@@ -100,6 +100,50 @@ A write from the app puts a card back at the path its own fields imply, so a
 misplaced file gets tidied rather than reported as wrong. Get the path right, or
 let the test suite tell you.
 
+## The `scrumit` CLI and the sprint skill
+
+Writing markdown is enough for a single agent. Coordinating several needs a
+little more: a way to see what is ready, claim one card without racing someone
+else, move it through the statuses, and leave a commit for every state change.
+That is the `scrumit` CLI.
+
+```sh
+npm link                 # puts `scrumit` on your PATH
+scrumit board            # ready, in progress, blocked, review
+scrumit validate         # duplicate ids, dangling refs, path drift
+scrumit claim ACME-140 --agent agent-claude
+scrumit finish ACME-140 --to review --summary "Implemented retries"
+```
+
+Full reference, including installation in another repository, JSON output, exit
+codes, and troubleshooting: **[`docs/CLI.md`](docs/CLI.md)**.
+
+The CLI is paired with a skill, `scrumit-sprint`, that teaches an agent the
+solo and multi-agent workflows:
+
+```sh
+scrumit skill install                         # .skills/scrumit-sprint
+scrumit skill install --dir .opencode/skills  # OpenCode's automatic location
+```
+
+OpenCode discovers `.skills` when `opencode.jsonc` lists it:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": [".skills"]
+}
+```
+
+The browser writes the same skill from **Settings → AI agents → Write the sprint
+skill**, so a repository can carry the workflow even if the CLI is not installed
+yet. The source of truth is [`skills/scrumit-sprint/`](skills/scrumit-sprint/).
+
+The rules the CLI and the skill share: one task per branch, one lifecycle commit
+per state change, never `git add -A`, never force-push, and never invent a
+`blocked` status — blocking is always `blocked_by`. If nothing is ready, the
+agent stops cleanly instead of inventing work.
+
 ## The repository format
 
 scrumit writes one file per artefact. The directory an issue lives in is derived
