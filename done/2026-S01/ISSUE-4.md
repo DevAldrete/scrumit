@@ -22,11 +22,11 @@ before optimistic state changes, not only before the file write.
 
 ## Acceptance criteria
 
-- [ ] `Capabilities` is defined in `model.ts` and exposed by every `RepoSource`.
-- [ ] The store exposes a capability signal derived from the source and permission state.
-- [ ] Every mutating entry point refuses cleanly when `canWrite` is false, with one explanation.
-- [ ] Demo, FSA, read-only, and HTTP sources declare accurate capabilities.
-- [ ] A test with a read-only fake source proves no mutation writes or throws.
+- [x] `Capabilities` is defined in `model.ts` and exposed by every `RepoSource`.
+- [x] The store exposes a capability signal derived from the source and permission state.
+- [x] Every mutating entry point refuses cleanly when `canWrite` is false, with one explanation.
+- [x] Demo, FSA, read-only, and HTTP sources declare accurate capabilities.
+- [x] A test with a read-only fake source proves no mutation writes or throws.
 
 ## Delivery
 
