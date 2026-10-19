@@ -1,7 +1,7 @@
 ---
 id: ISSUE-4
 title: Introduce the capability model and a single write guard
-status: doing
+status: done
 type: story
 epic: EPIC-02
 sprint: 2026-S01
@@ -10,7 +10,7 @@ priority: 1
 labels: [browser, core]
 created: 2026-10-19
 updated: 2026-10-19
-order: 10
+order: 40
 assignee: agent-opencode
 ---
 
@@ -27,3 +27,9 @@ before optimistic state changes, not only before the file write.
 - [ ] Every mutating entry point refuses cleanly when `canWrite` is false, with one explanation.
 - [ ] Demo, FSA, read-only, and HTTP sources declare accurate capabilities.
 - [ ] A test with a read-only fake source proves no mutation writes or throws.
+
+## Delivery
+
+- Commits: `5dbb4e5`, `6c8c0cc`
+- Summary: One capability seam; every mutation guarded before optimistic state
+- Checks: npm run check (80 tests), npm run smoke
