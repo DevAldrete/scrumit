@@ -1,7 +1,7 @@
 ---
 id: ISSUE-8
 title: Add a read-only folder source for Safari and Firefox
-status: doing
+status: done
 type: story
 epic: EPIC-02
 sprint: 2026-S02
@@ -10,7 +10,7 @@ priority: 1
 labels: [browser, source]
 created: 2026-10-19
 updated: 2026-10-19
-order: 10
+order: 90
 blocked_by: [ISSUE-4]
 assignee: agent-opencode
 ---
@@ -28,3 +28,9 @@ first and fall back.
 - [ ] Read-only capability is visible and mutations are refused.
 - [ ] The adapter contract suite runs against the read-only source.
 - [ ] A smoke test renders a fixture and proves zero writes were attempted.
+
+## Delivery
+
+- Commits: `b7874b0`, `d42b332`
+- Summary: Read-only folder source, input, and drop target; Chromium drops prefer a handle
+- Checks: npm run check (93 tests), npm run smoke
