@@ -1,7 +1,7 @@
 ---
 id: ISSUE-3
 title: Persist repos without a cloneable handle
-status: todo
+status: doing
 type: bug
 epic: EPIC-02
 sprint: 2026-S01
@@ -10,7 +10,8 @@ priority: 1
 labels: [browser, persistence]
 created: 2026-10-19
 updated: 2026-10-19
-order: 30
+order: 10
+assignee: agent-opencode
 ---
 
 ## Context
