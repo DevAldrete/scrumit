@@ -210,3 +210,32 @@ export function diffSnapshots(
   diff.details = details
   return diff
 }
+
+export interface ChangeLogEntry {
+  id: string
+  at: number
+  summary: string
+  details: string[]
+  total: number
+}
+
+/**
+ * Keep the newest 50 external changes. The toast is an event; this is the
+ * stream an agent produces while it works, and a stream needs a place to live.
+ */
+export function appendChangeLog(
+  log: readonly ChangeLogEntry[],
+  diff: SnapshotDiff,
+  at = Date.now(),
+  limit = 50,
+): ChangeLogEntry[] {
+  if (diff.total === 0) return log as ChangeLogEntry[]
+  const entry: ChangeLogEntry = {
+    id: `${at}-${Math.random().toString(36).slice(2, 8)}`,
+    at,
+    summary: diff.summary,
+    details: diff.details,
+    total: diff.total,
+  }
+  return [entry, ...log].slice(0, limit)
+}

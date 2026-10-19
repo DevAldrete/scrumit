@@ -14,10 +14,12 @@ import {
   forgetRepo,
   gitBranch,
   initialiseRepo,
+  layout,
   moveColumn,
   notify,
   patchColumn,
   patchConfig,
+  patchLayout,
   permission,
   reconnect,
   rescan,
@@ -113,6 +115,65 @@ export function Settings() {
               Narrower columns, same information.
             </span>
           </label>
+        </Section>
+
+        <Section title="Board layout" hint="saved on this device, not in the repository">
+          <div class="grid gap-2 sm:grid-cols-2">
+            <label class="flex flex-col gap-1">
+              <span class="label">Column width · {layout.value.columnWidth}px</span>
+              <input
+                type="range"
+                min="210"
+                max="420"
+                step="2"
+                value={layout.value.columnWidth}
+                class="accent-[var(--accent)]"
+                onInput={(event) =>
+                  void patchLayout({ columnWidth: Number(event.currentTarget.value) })
+                }
+              />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="label">Card spacing · {layout.value.cardGap}px</span>
+              <input
+                type="range"
+                min="0"
+                max="18"
+                step="1"
+                value={layout.value.cardGap}
+                class="accent-[var(--accent)]"
+                onInput={(event) =>
+                  void patchLayout({ cardGap: Number(event.currentTarget.value) })
+                }
+              />
+            </label>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
+            {(
+              [
+                ['separators', 'Column separators'],
+                ['cardBorders', 'Card outlines'],
+                ['grid', 'Background grid'],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} class="flex items-center gap-1.5 text-[12px] text-ink-2">
+                <input
+                  type="checkbox"
+                  class="accent-[var(--accent)]"
+                  checked={layout.value[key]}
+                  onChange={(event) =>
+                    void patchLayout({ [key]: event.currentTarget.checked })
+                  }
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <p class="mt-1.5 text-[11px] leading-snug text-ink-4">
+            Column names, order, visibility and WIP limits live in{' '}
+            <code>.scrumit/config.yaml</code> below. These layout choices are personal
+            to this browser.
+          </p>
         </Section>
 
         <Section title="Repository">
@@ -253,12 +314,32 @@ export function Settings() {
                       }
                     />
                     <label class="flex shrink-0 items-center gap-1 text-[11px] text-ink-4">
-                      WIP
+                      soft
                       <input
-                        class="field w-[58px]"
+                        class="field w-[52px]"
                         type="number"
                         min="1"
                         placeholder="none"
+                        title="Flexible limit: crossing it warns but never blocks a move"
+                        value={column.softWip ?? ''}
+                        onChange={(event) =>
+                          patchColumn(column.id as Status, {
+                            softWip:
+                              event.currentTarget.value === ''
+                                ? null
+                                : Number(event.currentTarget.value),
+                          })
+                        }
+                      />
+                    </label>
+                    <label class="flex shrink-0 items-center gap-1 text-[11px] text-ink-4">
+                      hard
+                      <input
+                        class="field w-[52px]"
+                        type="number"
+                        min="1"
+                        placeholder="none"
+                        title="Hard limit: a move that would exceed it is refused"
                         value={column.wip ?? ''}
                         onChange={(event) =>
                           patchColumn(column.id as Status, {
@@ -309,7 +390,8 @@ export function Settings() {
               <p class="mt-1.5 text-[11px] leading-snug text-ink-4">
                 Column ids stay fixed to {Object.values(STATUS_LABEL).join(', ')} because
                 status decides which folder a file lives in. Names, order, limits and
-                visibility are yours.
+                visibility are yours. A <strong>soft</strong> limit warns; a{' '}
+                <strong>hard</strong> limit refuses a move that would exceed it.
               </p>
             </div>
 

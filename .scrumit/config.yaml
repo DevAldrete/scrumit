@@ -3,8 +3,8 @@ project: scrumit
 columns:
   - { id: backlog, name: Backlog, wip: null }
   - { id: todo, name: To do, wip: null }
-  - { id: doing, name: Doing, wip: 3 }
-  - { id: review, name: Review, wip: 4 }
+  - { id: doing, name: Doing, soft_wip: 2, wip: 3 }
+  - { id: review, name: Review, soft_wip: 3, wip: 4 }
   - { id: done, name: Done, wip: null, terminal: true }
 backlog: { dir: backlog }
 sprints: { dir: sprints, length_days: 14 }

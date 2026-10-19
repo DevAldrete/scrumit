@@ -19,7 +19,7 @@ import {
 } from '../src/lib/artefacts.ts'
 import { defaultConfig, parseConfig, serializeConfig } from '../src/lib/config.ts'
 import { joinFrontmatter, splitFrontmatter } from '../src/lib/frontmatter.ts'
-import { boardColumns, hygiene, velocity, velocityMean } from '../src/lib/metrics.ts'
+import { boardColumns, hygiene, sprintWip, velocity, velocityMean } from '../src/lib/metrics.ts'
 import { epicPath, issuePath, slug } from '../src/lib/paths.ts'
 
 const CANONICAL = `---
@@ -257,7 +257,58 @@ test('board columns compute counts, points and WIP breaches', () => {
   assert.equal(doing.count, 2)
   assert.equal(doing.points, 8)
   assert.equal(doing.issues[0].id, 'B', 'lower order sorts first')
-  assert.equal(doing.over, false, 'the default WIP limit is 3')
+  assert.equal(doing.overWip, false, 'the default WIP limit is 3')
+  assert.equal(doing.overSoft, false, 'there is no soft limit by default')
+})
+
+test('soft and hard WIP limits round-trip and report separately', () => {
+  const config = parseConfig(
+    [
+      'columns:',
+      '  - { id: doing, name: Doing, soft_wip: 2, wip: 4 }',
+    ].join('\n'),
+  )
+  const doing = config.columns.find((column) => column.id === 'doing')
+  assert.equal(doing.softWip, 2)
+  assert.equal(doing.wip, 4)
+  assert.deepEqual(parseConfig(serializeConfig(config)).columns, config.columns)
+
+  const make = (id, status) => ({
+    id, title: id, status, type: 'story', epic: null, sprint: 'S1', points: 1,
+    assignee: null, priority: null, labels: [], blockedBy: [], links: [],
+    order: 10, created: null, updated: null, body: '', path: null, extra: {},
+  })
+  const columns = boardColumns(
+    [make('A', 'doing'), make('B', 'doing'), make('C', 'doing')],
+    config,
+  )
+  const column = columns.find((item) => item.id === 'doing')
+  assert.equal(column.overSoft, true, 'three cards cross the flexible limit of two')
+  assert.equal(column.overWip, false, 'but not the hard limit of four')
+})
+
+test('a sprint carries flexible and hard WIP limits', () => {
+  const sprint = parseSprint(
+    'sprints/S1/sprint.md',
+    '---\nid: S1\nname: One\nwip_soft: 2\nwip_hard: 4\n---\n',
+  )
+  assert.equal(sprint.wipSoft, 2)
+  assert.equal(sprint.wipHard, 4)
+  assert.deepEqual(parseSprint('sprints/S1/sprint.md', serializeSprint(sprint)), sprint)
+
+  const issue = (id, status) => ({
+    id, title: id, status, type: 'story', epic: null, sprint: 'S1', points: 1,
+    assignee: null, priority: null, labels: [], blockedBy: [], links: [],
+    order: 10, created: null, updated: null, body: '', path: null, extra: {},
+  })
+  const wip = sprintWip(
+    sprint,
+    [issue('A', 'doing'), issue('B', 'review'), issue('C', 'todo'), issue('D', 'done')],
+    defaultConfig(),
+  )
+  assert.equal(wip.count, 2, 'todo and done are not work in progress')
+  assert.equal(wip.overSoft, false)
+  assert.equal(wip.over, false)
 })
 
 test('velocity ignores the running sprint, and hygiene finds blockers', () => {

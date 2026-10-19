@@ -187,6 +187,8 @@ goal: Make webhook delivery trustworthy end to end.
 start: 2026-10-15
 end: 2026-10-28
 capacity: 34
+wip_soft: 6
+wip_hard: 8
 ---
 
 ## Working agreements
@@ -202,6 +204,8 @@ capacity: 34
 | `goal` | string | `""` | One sentence a stakeholder would understand. |
 | `start` / `end` | date | null | Drives days-remaining and the burndown. |
 | `capacity` | number | null | Committed points. Exceeding it is reported, not blocked. |
+| `wip_soft` | number | null | Flexible sprint WIP limit. Crossing it warns; moves still succeed. |
+| `wip_hard` | number | null | Hard sprint WIP limit. A move that would exceed it is refused. |
 
 A sprint folder with issues but no `sprint.md` is legal: scrumit shows the
 sprint and marks it as having no file yet. Write the `sprint.md` when you have
@@ -338,8 +342,12 @@ work-in-progress limits belong on the columns where work is actually in progress
 - Column **ids are fixed** to the five statuses, because status decides which
   folder a file lives in and that has to be portable between people and machines.
   Rename, reorder, cap and hide freely; do not invent an id.
-- `wip` is a work-in-progress ceiling. Exceeding it is reported on the board and
-  in the Flow view, and blocks nothing.
+- `wip` is the hard work-in-progress ceiling. A move that would exceed it is
+  refused by the app and reported in the Flow view. `soft_wip` is the flexible
+  limit: crossing it warns, changes the board's colour, and blocks nothing.
+- Sprint-level `wip_soft` and `wip_hard` count tasks in in-progress columns
+  (`doing` and `review`, excluding `backlog`, `todo` and terminal columns). The
+  same soft-warns / hard-refuses rule applies.
 - `terminal: true` marks the column excluded from cycle-time and flow maths.
 - Every `dir` is relative to the repository root.
 - A missing config is fine: the defaults above apply.
@@ -368,8 +376,10 @@ the path §5 derives, so drift is corrected rather than reported. A careless pat
 will be quietly tidied instead of flagged. Get the path right, and let the test
 suite tell you if you have not.
 
-`git` remains yours. scrumit reads the branch name from `.git/HEAD` and makes no
-attempt at `git status`, so commit, branch and merge in the terminal. A branch
+`git` remains yours. scrumit reads the branch name from `.git/HEAD`; through the
+local sidecar it can also show working-tree status and diffs and commit explicitly
+selected paths, but it never merges, rebases, pushes or stages everything
+implicitly. Commit, branch, merge and push in the terminal when in doubt. A branch
 switch shows up on the board on its own.
 
 If you are writing through the local sidecar (`scrumit serve`), a write can

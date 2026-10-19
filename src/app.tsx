@@ -2,6 +2,7 @@ import { useEffect } from 'preact/hooks'
 import {
   activeRepo,
   addLocalRepo,
+  applyLocation,
   bootstrap,
   capabilities,
   conflicts,
@@ -30,6 +31,7 @@ import { db, type RepoRecord } from './lib/db.ts'
 import type { RepoSource } from './lib/source.ts'
 import { Backlog } from './ui/Backlog.tsx'
 import { Board } from './ui/Board.tsx'
+import { Changes } from './ui/Changes.tsx'
 import { CommandPalette } from './ui/CommandPalette.tsx'
 import { Epics } from './ui/Epics.tsx'
 import { IssuePanel } from './ui/IssuePanel.tsx'
@@ -142,6 +144,10 @@ export function App() {
   }, [])
 
   useEffect(() => {
+    if (loadState.value === 'ready') applyLocation()
+  }, [loadState.value, activeRepo.value?.id])
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
@@ -163,6 +169,10 @@ export function App() {
       if (repo) void openRepo(repo, { gesture: true })
     }
 
+    function onHashChange() {
+      applyLocation()
+    }
+
     let hiddenAt = 0
     function onVisibility() {
       if (document.visibilityState === 'hidden') {
@@ -181,6 +191,7 @@ export function App() {
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('scrumit:palette', onPaletteRequest)
     window.addEventListener('scrumit:open-repo', onOpenRepo)
+    window.addEventListener('hashchange', onHashChange)
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pagehide', onPageHide)
 
@@ -188,6 +199,7 @@ export function App() {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('scrumit:palette', onPaletteRequest)
       window.removeEventListener('scrumit:open-repo', onOpenRepo)
+      window.removeEventListener('hashchange', onHashChange)
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', onPageHide)
     }
@@ -300,6 +312,8 @@ function Content() {
       return <Epics />
     case 'metrics':
       return <Metrics />
+    case 'changes':
+      return <Changes />
     case 'settings':
       return <Settings />
     case 'board':

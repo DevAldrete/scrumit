@@ -5,6 +5,8 @@ import {
   addLocalRepo,
   closeRepo,
   compact,
+  clearExternalLog,
+  externalLog,
   forgetRepo,
   gitBranch,
   lastExternalAt,
@@ -111,6 +113,7 @@ export function TopBar() {
  */
 function LiveIndicator() {
   const at = lastExternalAt.value
+  const log = externalLog.value
   const [flash, setFlash] = useState(false)
 
   useEffect(() => {
@@ -123,21 +126,75 @@ function LiveIndicator() {
   if (!watching.value) return null
 
   return (
-    <span
-      class="hidden shrink-0 items-center gap-1.5 text-[11px] sm:flex"
-      style={{ color: flash ? 'var(--accent)' : 'var(--ink-4)' }}
-      title={
-        flash
-          ? 'The board was just rebuilt from disk'
-          : 'Watching the repository for changes made outside scrumit'
+    <Menu
+      align="left"
+      class="w-[64px] shrink-0"
+      menuClass="w-[340px] max-w-[calc(100vw-24px)]"
+      title="Recent changes made outside scrumit"
+      label={
+        <span
+          class="flex min-w-0 items-center gap-1.5 text-[11px]"
+          style={{ color: flash ? 'var(--accent)' : 'var(--ink-4)' }}
+        >
+          <span
+            class="h-[6px] w-[6px] shrink-0 rounded-full"
+            style={{ background: flash ? 'var(--accent)' : 'var(--ok)' }}
+          />
+          {flash ? 'synced' : 'live'}
+        </span>
       }
     >
-      <span
-        class="h-[6px] w-[6px] shrink-0 rounded-full"
-        style={{ background: flash ? 'var(--accent)' : 'var(--ok)' }}
-      />
-      {flash ? 'synced' : 'live'}
-    </span>
+      {(close) => (
+        <div class="flex min-w-0 flex-col">
+          <div class="flex items-center gap-2 px-2 py-1">
+            <span class="label">Changes from disk</span>
+            <span class="num ml-auto text-[10px] text-ink-4">{log.length}/50</span>
+            {log.length > 0 ? (
+              <button
+                type="button"
+                class="text-[10.5px] text-ink-4 hover:text-ink"
+                onClick={() => {
+                  clearExternalLog()
+                  close()
+                }}
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+          {log.length === 0 ? (
+            <p class="px-2 py-2 text-[11.5px] leading-snug text-ink-4">
+              Nothing has arrived from outside the app yet. Edits by an agent, a
+              terminal or a <code>git checkout</code> will appear here.
+            </p>
+          ) : (
+            <ul class="max-h-[320px] overflow-y-auto">
+              {log.map((entry) => (
+                <li key={entry.id} class="border-t border-line px-2 py-1.5">
+                  <div class="flex items-baseline gap-2">
+                    <span class="min-w-0 flex-1 text-[11.5px] text-ink-2">
+                      {entry.summary}
+                    </span>
+                    <span class="num shrink-0 text-[10px] text-ink-4">
+                      {relativeTime(entry.at)}
+                    </span>
+                  </div>
+                  {entry.details.length > 0 ? (
+                    <ul class="mt-0.5">
+                      {entry.details.map((line) => (
+                        <li key={line} class="truncate text-[10.5px] text-ink-4" title={line}>
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </Menu>
   )
 }
 

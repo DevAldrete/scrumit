@@ -421,7 +421,7 @@ the number of round trips between "I want to try this" and "it worked".`,
   },
 ]
 
-const SPRINTS: { id: string; name: string; state: Sprint['state']; goal: string; start: string; end: string; capacity: number; notes: string }[] = [
+const SPRINTS: { id: string; name: string; state: Sprint['state']; goal: string; start: string; end: string; capacity: number; wipSoft?: number | null; wipHard?: number | null; notes: string }[] = [
   {
     id: S20,
     name: 'Sprint 20',
@@ -430,6 +430,8 @@ const SPRINTS: { id: string; name: string; state: Sprint['state']; goal: string;
     start: '2026-10-15',
     end: '2026-10-28',
     capacity: 34,
+    wipSoft: 6,
+    wipHard: 8,
     notes: `## Working agreements
 
 - Wednesday is integration day; no new branches after 15:00
@@ -553,6 +555,8 @@ export function buildDemoSprints(): Sprint[] {
     start: s.start,
     end: s.end,
     capacity: s.capacity,
+    wipSoft: s.wipSoft ?? null,
+    wipHard: s.wipHard ?? null,
     notes: s.notes,
     path: null,
     extra: {},
@@ -560,7 +564,22 @@ export function buildDemoSprints(): Sprint[] {
 }
 
 export function buildDemoFiles(): Map<string, string> {
-  const config = { ...defaultConfig(), project: 'Acme Payments Platform' }
+  const base = defaultConfig()
+  // The demo has enough work in flight to make WIP signals visible without
+  // making the first drag in the tour hit a hard wall.
+  const config = {
+    ...base,
+    project: 'Acme Payments Platform',
+    columns: base.columns.map((column) =>
+      column.id === 'doing' || column.id === 'review'
+        ? {
+            ...column,
+            softWip: column.id === 'doing' ? 4 : 4,
+            wip: column.id === 'doing' ? 6 : 6,
+          }
+        : column,
+    ),
+  }
   const files = new Map<string, string>()
   files.set(CONFIG_PATH, serializeConfig(config))
   // A plausible HEAD so the branch indicator has something real to read.

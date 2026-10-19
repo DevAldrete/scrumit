@@ -160,6 +160,8 @@ export function parseSprint(path: string, text: string): Sprint | null {
     'start',
     'end',
     'capacity',
+    'wip_soft',
+    'wip_hard',
     'length_days',
   ])
   const extra: Record<string, unknown> = {}
@@ -174,6 +176,8 @@ export function parseSprint(path: string, text: string): Sprint | null {
     start: str(data.start),
     end: str(data.end),
     capacity: num(data.capacity),
+    wipSoft: num(data.wip_soft ?? data.wipSoft),
+    wipHard: num(data.wip_hard ?? data.wipHard),
     state:
       rawState === 'active' || rawState === 'closed' || rawState === 'planned'
         ? rawState
@@ -194,6 +198,8 @@ export function serializeSprint(sprint: Sprint): string {
   if (sprint.start) fm.start = sprint.start
   if (sprint.end) fm.end = sprint.end
   if (sprint.capacity !== null) fm.capacity = sprint.capacity
+  if (sprint.wipSoft != null) fm.wip_soft = sprint.wipSoft
+  if (sprint.wipHard != null) fm.wip_hard = sprint.wipHard
   for (const [key, value] of Object.entries(sprint.extra)) {
     if (!(key in fm)) fm[key] = value
   }

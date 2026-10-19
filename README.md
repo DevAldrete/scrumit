@@ -20,22 +20,34 @@ scrumit, so nothing is lost if you stop using it.
 
 ## What it does
 
-- **Board** with drag and drop, per-column WIP limits, and a manual card order
-  that is stored in the file rather than in the app.
+- **Board** with drag and drop, per-column soft and hard WIP limits, optional
+  sprint-wide WIP limits, and a manual card order that is stored in the file
+  rather than in the app.
+- **Board lenses** — jump from any sprint to a board already filtered to it, or
+  use the Sprint scope in the filter bar to switch between all work, the active
+  sprint, the backlog and a named sprint.
+- **Board layout** — column width, card spacing, column separators, card borders
+  and a background grid are yours to tune, saved per browser.
 - **Backlog** as a dense list with multi-select, bulk scheduling, and
   grip-drag reordering.
 - **Issue panel** for every field, with a markdown editor and a rendered
   preview. The body is never rewritten by the app.
-- **Sprints** with goals, dates, capacity, close-with-carry-over, and a
-  burndown derived from the files.
+- **Sprints** with goals, dates, capacity, flexible and hard WIP limits,
+  close-with-carry-over, and a burndown derived from the files.
 - **Epics** with owner, target, theme-derived hue, and progress.
 - **Flow** — velocity, flow distribution, lead time, and the pre-standup checks
   (blocked, unassigned, unestimated, no acceptance criteria, gone quiet).
-- **Command palette** (`⌘K` / `Ctrl+K`) across issues, views, sprints, epics,
-  repositories and themes.
+- **Changes** — over the local sidecar: working-tree status grouped by folder,
+  a unified diff per file, ahead/behind, recent commits, and a commit that
+  contains exactly the paths you tick.
+- **Command palette** (`⌘K` / `Ctrl+K`) across issues, issue bodies, views,
+  sprints, epics, repositories and themes.
+- **Deep links** — `#ACME-140` opens a card, `?repo=<id>` opens a repository and
+  `?sprint=2026-S20` opens the board already scoped to that sprint.
 - **Live watching** — the board follows edits made outside the app and tells you
   what changed in plain words: "From disk: 1 card moved, 1 added", naming the
-  moves. An agent can work the repo while you watch it happen.
+  moves. The live indicator keeps the last 50 changes in a panel, so an agent's
+  stream of work does not disappear with the latest toast.
 - **23 themes** — scrumit's own light and dark, plus Catppuccin, Kanagawa,
   Gruvbox, Everforest, Nord, Tokyo Night, Rosé Pine, Solarized and One.
 - **Multiple repositories**, switchable from the header. Folder handles are
@@ -248,8 +260,9 @@ Rules that matter:
 ### config.yaml
 
 Column ids are fixed to the five statuses — status decides which folder a file
-lives in, so it has to be portable between teams. Names, order, WIP limits and
-visibility are yours.
+lives in, so it has to be portable between teams. Names, order, flexible and hard
+WIP limits, and visibility are yours. Sprint files can carry their own
+`wip_soft` and `wip_hard` limits for in-flight work.
 
 ```yaml
 version: 1
@@ -257,8 +270,8 @@ project: Acme Payments Platform
 columns:
   - { id: backlog, name: Backlog, wip: null }
   - { id: todo,    name: To do,   wip: null }
-  - { id: doing,   name: Doing,   wip: 3 }
-  - { id: review,  name: Review,  wip: 4 }
+  - { id: doing,   name: Doing,   soft_wip: 2, wip: 3 }
+  - { id: review,  name: Review,  soft_wip: 3, wip: 4 }
   - { id: done,    name: Done,    wip: null, terminal: true }
 backlog: { dir: backlog }
 sprints: { dir: sprints, length_days: 14 }
@@ -285,10 +298,10 @@ drag and drop, Motion for the handful of animations, `yaml` for the file format,
 and `marked` + DOMPurify for the preview — the last two loaded lazily, since the
 board never needs them.
 
-Two adapters sit behind one `RepoSource` interface: one over the File System
-Access API and one over an in-memory map for the demo repository. Both are
-covered by tests, which is why the file-format layer can be trusted with a real
-checkout.
+Four adapters sit behind one `RepoSource` interface: File System Access, the
+local sidecar, a read-only folder and the in-memory demo repository. All of them
+are covered by tests, which is why the file-format layer can be trusted with a
+real checkout.
 
 The interface is deliberately monospaced and near-greyscale: colour is reserved
 for the data, so epics, statuses and WIP breaches are the only chromatic events
@@ -301,20 +314,21 @@ the change model, the design language and the roadmap.
 npm run test
 ```
 
-26 tests over the parts that would damage a repository if they were wrong:
+128 tests over the parts that would damage a repository if they were wrong:
 front-matter round-tripping and byte-preservation, lenient parsing of
 hand-written files, CRLF and BOM handling, path derivation and file moves,
-config parsing and defaults, column/WIP arithmetic, and the File System Access
-adapter driven against a mock of the browser API.
+config parsing and defaults, column and sprint WIP arithmetic, and the File
+System Access adapter driven against a mock of the browser API.
 
-A further 27 tests cover the agent workflow and live watching: that `llms.txt`
+The same suite covers the agent workflow and live watching: that `llms.txt`
 still documents every status, type and front-matter key the code accepts, that
 its config example matches the real defaults, that the generated
-`.scrumit/AGENTS.md` reports the repository it was built from, and that the diff
-between two scans reads as a sentence rather than a file count.
+`.scrumit/AGENTS.md` reports the repository it was built from, that the diff
+between two scans reads as a sentence rather than a file count, and that the
+git status/diff/commit API works against a real temporary checkout.
 
 `npm run smoke` additionally loads the app in a real Chrome and drives the whole
-thing: it opens the demo repository, drags a card between columns, walks all six
+thing: it opens the demo repository, drags a card between columns, walks all seven
 views, switches themes, writes the agent guide and reads it back out of
 IndexedDB, reloads to confirm persistence, and then opens a second repository
 built over the Origin Private File System to test watching for real — asserting
@@ -325,12 +339,11 @@ the right path. It fails on any console error and writes screenshots to
 
 ## Roadmap
 
-Next: file watching via `FileSystemObserver`, issue templates from
-`.scrumit/templates`, an undo stack, bulk edit, and saved filter views.
+Next: issue templates from `.scrumit/templates`, an undo stack, bulk edit, and
+saved filter views.
 
-Later: a local git sidecar for `status`, `diff`, `log` and `commit`, burndown
-from real sprint history, a dependency graph for `blocked_by`, importer from
-CSV and Notion, and a printable sprint review.
+Later: burndown from real sprint history, a dependency graph for `blocked_by`,
+importer from CSV and Notion, and a printable sprint review.
 
 **The cross-browser strategy and the next session's work are planned in
 [`docs/PLAN.md`](docs/PLAN.md)** — three source tiers (folder, local sidecar,

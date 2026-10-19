@@ -2,6 +2,7 @@ import { defaultConfig, parseConfig } from './config.ts'
 import { classify, isMarkdown, parseEpic, parseIssue, parseSprint } from './artefacts.ts'
 import { validateScan, type ValidationIssue } from './validate.ts'
 import type { BoardConfig, Capabilities, Epic, Issue, RepoSnapshot, Sprint } from './model.ts'
+import type { GitCommit, GitCommitResult, GitDiff, GitStatus } from './git.ts'
 
 export type PermissionState = 'granted' | 'prompt' | 'denied' | 'unsupported'
 
@@ -44,6 +45,11 @@ export interface RepoSource {
    * can tell "not supported" from "nothing changed".
    */
   watch?(onChange: (event: WatchEvent) => void): Promise<StopWatching>
+  /** Present only when the source can run git locally (the sidecar). */
+  gitStatus?(): Promise<GitStatus>
+  gitDiff?(path: string): Promise<GitDiff>
+  gitLog?(limit?: number): Promise<GitCommit[]>
+  gitCommit?(message: string, paths: string[]): Promise<GitCommitResult>
 }
 
 /** Directories worth walking past. Repos contain more than scrum. */
@@ -170,6 +176,8 @@ export async function scanRepo(
         start: null,
         end: null,
         capacity: null,
+        wipSoft: null,
+        wipHard: null,
         state: 'planned',
         notes: '',
         path: null,

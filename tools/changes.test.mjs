@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { diffSnapshots } from '../src/lib/changes.ts'
+import { appendChangeLog, diffSnapshots } from '../src/lib/changes.ts'
 import { defaultConfig } from '../src/lib/config.ts'
 
 const config = { ...defaultConfig(), project: 'Test', dirs: { backlog: 'backlog', sprints: 'sprints', epics: 'epics', archive: 'done' } }
@@ -215,4 +215,19 @@ test('a busy agent burst produces one sentence, not twelve', () => {
   assert.equal(diff.removed.length, 1)
   assert.equal(diff.total, 5)
   assert.equal(diff.summary, 'From disk: 1 card moved, 3 added, 1 removed')
+})
+
+test('external changes are kept newest first and capped at fifty', () => {
+  const before = snapshot({ issues: [issue('A-1')] })
+  let log = []
+  for (let index = 0; index < 55; index++) {
+    const after = snapshot({
+      issues: [issue('A-1', { title: `edit ${index}` })],
+    })
+    log = appendChangeLog(log, diffSnapshots(before, after), 1_000 + index)
+  }
+  assert.equal(log.length, 50, 'the toast is an event; the log is a bounded stream')
+  assert.equal(log[0].at, 1_054, 'newest first')
+  assert.equal(log[49].at, 1_005)
+  assert.equal(appendChangeLog(log, diffSnapshots(before, before)).length, 50, 'an empty diff writes nothing')
 })

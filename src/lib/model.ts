@@ -57,6 +57,12 @@ export interface Sprint {
   start: string | null
   end: string | null
   capacity: number | null
+  /**
+   * Sprint-wide WIP limits. The soft limit is advisory; the hard limit refuses
+   * a move that would exceed it. `null` means uncapped.
+   */
+  wipSoft: number | null
+  wipHard: number | null
   state: 'planned' | 'active' | 'closed'
   notes: string
   path: string | null
@@ -67,13 +73,21 @@ export interface Column extends BoardColumnSpec {
   /** Facts the board needs, resolved from the issues on hand. */
   count: number
   points: number
+  /** The soft (flexible) limit was crossed. */
+  overSoft: boolean
+  /** The hard limit was crossed. */
   overWip: boolean
 }
 
 export interface BoardColumnSpec {
   id: Status
   name: string
-  /** Work-in-progress ceiling, or null for uncapped. */
+  /**
+   * Soft, flexible work-in-progress limit. Crossing it warns and never refuses
+   * a move.
+   */
+  softWip: number | null
+  /** Hard work-in-progress ceiling, or null for uncapped. */
   wip: number | null
   /** Terminal columns are excluded from cycle-time and flow maths. */
   terminal: boolean
@@ -98,6 +112,20 @@ export interface BoardConfig {
     assignees: boolean
     priorities: boolean
   }
+}
+
+/** Per-device board geometry. Kept in Dexie, never in the repository. */
+export interface BoardLayout {
+  /** Width of one board column, in pixels. */
+  columnWidth: number
+  /** Gap between cards, in pixels. */
+  cardGap: number
+  /** Draw the vertical rule between columns. */
+  separators: boolean
+  /** Draw a border around every card. */
+  cardBorders: boolean
+  /** Draw a faint background grid behind the board. */
+  grid: boolean
 }
 
 export interface RepoMeta {

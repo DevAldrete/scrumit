@@ -14,11 +14,11 @@ export function defaultConfig(): BoardConfig {
     version: 1,
     project: '',
     columns: [
-      { id: 'backlog', name: STATUS_LABEL.backlog, wip: null, terminal: false, hidden: false },
-      { id: 'todo', name: STATUS_LABEL.todo, wip: null, terminal: false, hidden: false },
-      { id: 'doing', name: STATUS_LABEL.doing, wip: 3, terminal: false, hidden: false },
-      { id: 'review', name: STATUS_LABEL.review, wip: 4, terminal: false, hidden: false },
-      { id: 'done', name: STATUS_LABEL.done, wip: null, terminal: true, hidden: false },
+      { id: 'backlog', name: STATUS_LABEL.backlog, softWip: null, wip: null, terminal: false, hidden: false },
+      { id: 'todo', name: STATUS_LABEL.todo, softWip: null, wip: null, terminal: false, hidden: false },
+      { id: 'doing', name: STATUS_LABEL.doing, softWip: null, wip: 3, terminal: false, hidden: false },
+      { id: 'review', name: STATUS_LABEL.review, softWip: null, wip: 4, terminal: false, hidden: false },
+      { id: 'done', name: STATUS_LABEL.done, softWip: null, wip: null, terminal: true, hidden: false },
     ],
     dirs: { backlog: 'backlog', sprints: 'sprints', epics: 'epics', archive: 'done' },
     sprintLengthDays: 14,
@@ -84,6 +84,7 @@ export function parseConfig(text: string): BoardConfig {
     columns.push({
       id: id as BoardColumnSpec['id'],
       name: asString(col.name, fallback.name),
+      softWip: asNumber(col.soft_wip ?? col.softWip),
       wip: asNumber(col.wip),
       terminal: asBool(col.terminal, fallback.terminal),
       hidden: asBool(col.hidden, false),
@@ -121,6 +122,7 @@ export function serializeConfig(config: BoardConfig): string {
     columns: config.columns.map((c) => ({
       id: c.id,
       name: c.name,
+      soft_wip: c.softWip,
       wip: c.wip,
       ...(c.terminal ? { terminal: true } : {}),
       ...(c.hidden ? { hidden: true } : {}),

@@ -4,13 +4,15 @@ import { addDays, daysBetween, isoToDate, sumPoints, todayISO } from './format.t
 export interface ColumnStat {
   id: Status
   name: string
+  softWip: number | null
   wip: number | null
   terminal: boolean
   hidden: boolean
   issues: Issue[]
   count: number
   points: number
-  over: boolean
+  overSoft: boolean
+  overWip: boolean
 }
 
 /** Group issues into the configured columns, applying the manual order. */
@@ -28,13 +30,15 @@ export function boardColumns(issues: Issue[], config: BoardConfig): ColumnStat[]
     return {
       id: column.id,
       name: column.name,
+      softWip: column.softWip ?? null,
       wip: column.wip,
       terminal: column.terminal,
       hidden: column.hidden,
       issues: columnIssues,
       count: columnIssues.length,
       points,
-      over: column.wip !== null && columnIssues.length > column.wip,
+      overSoft: column.softWip != null && columnIssues.length > column.softWip,
+      overWip: column.wip !== null && columnIssues.length > column.wip,
     }
   })
 }
@@ -110,6 +114,44 @@ export function sprintProgress(sprint: Sprint, issues: Issue[]): SprintProgress 
     doneRatio: committed > 0 ? done / committed : 0,
     scopeAdded,
     total,
+  }
+}
+
+export interface SprintWipStat {
+  /** Tasks in in-progress columns (`doing`/`review` by default), not planned ones. */
+  count: number
+  soft: number | null
+  hard: number | null
+  overSoft: boolean
+  over: boolean
+  /** Every issue in the sprint, including done and not-started work. */
+  total: number
+}
+
+/** Statuses that count towards the sprint's in-flight WIP limit. */
+export function countsAsSprintWip(status: Status, config: BoardConfig): boolean {
+  if (status === 'backlog' || status === 'todo') return false
+  const column = config.columns.find((item) => item.id === status)
+  return column ? !column.terminal : status !== 'done'
+}
+
+/**
+ * Sprint-level WIP: tasks that are actually in flight, excluding backlog, todo
+ * and terminal columns. The soft limit warns; the hard limit is enforced by the
+ * store before it accepts a move.
+ */
+export function sprintWip(sprint: Sprint, issues: Issue[], config: BoardConfig): SprintWipStat {
+  const scoped = issuesOfSprint(issues, sprint.id)
+  const count = scoped.filter((issue) => countsAsSprintWip(issue.status, config)).length
+  const soft = sprint.wipSoft ?? null
+  const hard = sprint.wipHard ?? null
+  return {
+    count,
+    soft,
+    hard,
+    overSoft: soft !== null && count > soft,
+    over: hard !== null && count > hard,
+    total: scoped.length,
   }
 }
 

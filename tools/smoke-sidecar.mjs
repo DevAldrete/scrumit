@@ -17,6 +17,7 @@ import {
   readFileSync,
   writeFileSync,
 } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { chromium, firefox, webkit } from 'playwright'
@@ -42,11 +43,9 @@ function option(name) {
 function makeRepo() {
   const repo = mkdtempSync(join(tmpdir(), 'scrumit-matrix-'))
   mkdirSync(join(repo, '.scrumit'), { recursive: true })
-  mkdirSync(join(repo, '.git'), { recursive: true })
   mkdirSync(join(repo, 'backlog'), { recursive: true })
   mkdirSync(join(repo, 'sprints/2026-S01'), { recursive: true })
   writeFileSync(join(repo, '.scrumit/config.yaml'), 'version: 1\nproject: Matrix\n')
-  writeFileSync(join(repo, '.git/HEAD'), 'ref: refs/heads/matrix\n')
   writeFileSync(
     join(repo, 'sprints/2026-S01/sprint.md'),
     '---\nid: 2026-S01\nname: Sprint 1\nstate: active\ngoal: Prove the matrix\n---\n',
@@ -55,6 +54,12 @@ function makeRepo() {
     join(repo, 'sprints/2026-S01/MATRIX-1.md'),
     '---\nid: MATRIX-1\ntitle: Matrix card\nstatus: todo\ntype: story\nsprint: 2026-S01\norder: 10\ncreated: 2026-10-19\nupdated: 2026-10-19\n---\n\n## Context\n\nA card the smoke can edit.\n',
   )
+  const git = (...args) => execFileSync('git', args, { cwd: repo, stdio: 'pipe' })
+  git('init', '-q', '-b', 'matrix')
+  git('config', 'user.name', 'Matrix Agent')
+  git('config', 'user.email', 'matrix@example.com')
+  git('add', '.')
+  git('commit', '-q', '-m', 'matrix fixture')
   return repo
 }
 
@@ -123,6 +128,13 @@ async function runSidecar(name) {
       '---\nid: MATRIX-2\ntitle: External from the matrix\nstatus: backlog\ntype: story\norder: 10\n---\n',
     )
     await waitForText(page, 'External from the matrix', 10_000)
+
+    console.log(`- ${name}: open the git changes view`)
+    await page.locator('nav[aria-label="Views"] button[aria-label="Changes"]').click()
+    await waitForText(page, 'MATRIX-2.md', 10_000)
+    await page.locator('button').filter({ hasText: 'MATRIX-2.md' }).first().click()
+    await waitForText(page, 'External from the matrix', 10_000)
+    await page.screenshot({ path: join(SHOTS, `changes-${name}.png`) })
 
     console.log(`- ${name}: stop the server and make the failure legible`)
     ignoreErrors = true

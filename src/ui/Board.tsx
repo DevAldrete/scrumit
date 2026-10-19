@@ -10,6 +10,7 @@ import {
   compact,
   createIssue,
   endInteraction,
+  layout,
   moveIssue,
 } from '../lib/store.ts'
 import { IconPlus } from './icons.tsx'
@@ -32,8 +33,18 @@ export function Board() {
     }
   }, [])
 
+  const geometry = layout.value
+
   return (
-    <div ref={container} class="scroll-x flex h-full">
+    <div
+      ref={container}
+      class={`scroll-x flex h-full ${geometry.grid ? 'board-grid' : ''}`}
+      data-separators={geometry.separators ? 'true' : 'false'}
+      data-card-borders={geometry.cardBorders ? 'true' : 'false'}
+      style={{
+        '--card-gap': `${geometry.cardGap}px`,
+      } as never}
+    >
       {columns.map((column) => (
         <Column
           key={column.id}
@@ -132,41 +143,67 @@ function Column({
     }
   }, [column.id, canWrite])
 
-  const width = compact.value ? 234 : 268
+  const configuredWidth = layout.value.columnWidth
+  const width = compact.value ? Math.min(configuredWidth, 234) : configuredWidth
 
   return (
     <section
-      class="flex h-full shrink-0 flex-col border-r border-line"
+      class="board-column flex h-full shrink-0 flex-col border-r border-line"
       style={{ width: `${width}px` }}
       data-column={column.id}
     >
       <header class="relative shrink-0 px-2.5 pt-2 pb-1.5">
-        <div class="flex items-baseline gap-1.5">
-          <h3 class="text-[12px] font-medium text-ink-2">{column.name}</h3>
-          <span class="num text-[11px] text-ink-4">{column.count}</span>
-          {column.wip !== null ? (
+        <div class="flex min-w-0 items-baseline gap-1.5">
+          <h3 class="min-w-0 truncate text-[12px] font-medium text-ink-2" title={column.name}>
+            {column.name}
+          </h3>
+          <span class="num shrink-0 text-[11px] text-ink-4">{column.count}</span>
+          {column.wip !== null || column.softWip !== null ? (
             <span
-              class="num text-[11px]"
-              style={{ color: column.over ? 'var(--signal)' : 'var(--ink-4)' }}
-              title={`Work-in-progress limit: ${column.wip}`}
+              class="num flex shrink-0 items-center gap-1 text-[11px]"
+              style={{
+                color: column.overWip
+                  ? 'var(--signal)'
+                  : column.overSoft
+                    ? 'var(--warn)'
+                    : 'var(--ink-4)',
+              }}
+              title={[
+                column.softWip !== null ? `soft limit ${column.softWip}` : null,
+                column.wip !== null ? `hard limit ${column.wip}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             >
-              /{column.wip}
+              {column.wip !== null ? `/${column.wip}` : null}
+              {column.softWip !== null ? (
+                <span class="text-[9px]">soft {column.softWip}</span>
+              ) : null}
             </span>
           ) : null}
-          <span class="num ml-auto text-[11px] text-ink-4">{column.points} pts</span>
+          <span class="num ml-auto shrink-0 text-[11px] text-ink-4">{column.points} pts</span>
         </div>
         {column.wip !== null ? (
           <div class="mt-1.5">
             <Progress
               value={column.count / column.wip}
-              tone={column.over ? 'signal' : 'accent'}
+              tone={column.overWip ? 'signal' : column.overSoft ? 'warn' : 'accent'}
+              softMarker={
+                column.softWip !== null && column.wip !== null
+                  ? column.softWip / column.wip
+                  : null
+              }
               height={2}
             />
           </div>
         ) : null}
-        {column.over ? (
+        {column.overWip ? (
           <p class="mt-1 text-[10.5px] text-signal">
-            Over the limit by {column.count - (column.wip ?? 0)} — finish something first.
+            Over the hard limit by {column.count - (column.wip ?? 0)} — finish something first.
+          </p>
+        ) : column.overSoft ? (
+          <p class="mt-1 text-[10.5px] text-warn">
+            Past the flexible limit of {column.softWip}. Slow down before this becomes a blocker.
           </p>
         ) : null}
         <div

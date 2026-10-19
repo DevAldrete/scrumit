@@ -154,8 +154,8 @@ project: Acme Platform
 columns:
   - { id: backlog, name: Backlog, wip: null }
   - { id: todo,    name: To do,   wip: 8 }
-  - { id: doing,   name: Doing,   wip: 3 }
-  - { id: review,  name: Review,  wip: 4 }
+  - { id: doing,   name: Doing,   soft_wip: 2, wip: 3 }
+  - { id: review,  name: Review,  soft_wip: 3, wip: 4 }
   - { id: done,    name: Done,    wip: null, terminal: true }
 sprints:
   length_days: 14
@@ -171,7 +171,13 @@ vocabulary:
   assignees: true
 ```
 
-`wip` drives the board's limit indicator and the WIP-limit signal in metrics.
+`wip` is a hard ceiling: a move that would exceed it is refused and explained.
+`soft_wip` is the flexible limit: it warns, colours the column, and blocks
+nothing. Sprint files may also carry `wip_soft` and `wip_hard`; those count
+in-flight tasks (`doing` and `review`, excluding backlog, todo and terminal
+columns) across the whole sprint. Board geometry — column width, card spacing,
+separators, outlines and a background grid — is a per-device preference in Dexie,
+not repository configuration.
 
 ## 4. Change model
 
@@ -238,8 +244,11 @@ So the interesting direction of travel is work arriving that scrumit did not do.
   above the adapter are unchanged. It reconnects with backoff and reports one
   legible outage rather than throwing on every write.
 
-`git` stays out of process. scrumit reads the branch name from `.git/HEAD` and
-makes no attempt at `git status`.
+`git` is read directly for the branch name, and remains the merge tool. The
+sidecar additionally exposes status, a unified diff per file, the last commits,
+and a commit of explicitly selected paths. It never offers merge, rebase, push or
+an implicit `git add -A`; a commit is the paths the user ticked and nothing else.
+Ordinary folder and read-only tiers still show the branch only.
 
 ## 5. Module map
 
@@ -254,7 +263,8 @@ makes no attempt at `git status`.
 | `src/lib/db.ts` | Dexie schema: repos+handles, prefs, snapshot cache, drafts. |
 | `src/lib/source.ts` | `RepoSource` interface, `Capabilities`, the directory scan, the write/move helper. |
 | `src/lib/fsa.ts` | File System Access adapter: walk, read, write, permissions, `FileSystemObserver`. |
-| `src/lib/http.ts` | Sidecar adapter: ETag conflicts, SSE watching, typed outage errors. |
+| `src/lib/http.ts` | Sidecar adapter: ETag conflicts, SSE watching, typed outage errors, git API. |
+| `src/lib/git.ts` | Types shared by the Changes view and the sidecar's git API. |
 | `src/lib/readonly.ts` | Read-only folder adapter over a `FileList` or drop entries. |
 | `src/lib/demo.ts` | Seeded in-memory adapter, mirrored into Dexie. |
 | `src/lib/capabilities.ts` | The one permission + capability combination and refusal copy. |
@@ -268,7 +278,7 @@ makes no attempt at `git status`.
 | `src/lib/render.ts` | Markdown → sanitised HTML, both imported lazily. |
 | `src/lib/motion.ts` | The four animations, and the reduced-motion guard. |
 | `src/lib/format.ts` | Dates, durations, people, points. |
-| `src/ui/*` | Shell, board, backlog, sprint and epic views, flow, settings, palette. |
+| `src/ui/*` | Shell, board, backlog, sprint, epic, flow, git changes and settings views, palette. |
 | `src/ui/charts.tsx` | Burndown, velocity bars, flow band — hand-drawn SVG, no chart library. |
 | `src/themes.css` | Token defaults + 23 community themes. |
 | `tools/*.test.mjs` | Format, adapter, contract, CLI, and sidecar tests (`node --test`). |
@@ -289,12 +299,13 @@ directly desynchronises the virtual tree.
 
 **`git` is read, never reproduced.** The branch comes from `.git/HEAD`, read
 directly rather than through the directory walk — the walk deliberately skips
-`.git`, which is exactly the kind of bug the adapter tests exist to catch. No
-`git status` is attempted.
+`.git`, which is exactly the kind of bug the adapter tests exist to catch. The
+sidecar delegates status, diff, log and commit to the real `git` binary, with
+argv arrays and path containment; merge, rebase and push are deliberately absent.
 
 **Statuses are fixed at five.** Status decides which folder a file lives in, so
-it has to be portable between people and machines. Names, order, WIP limits and
-visibility are all configurable; the ids are not.
+it has to be portable between people and machines. Names, order, soft and hard
+WIP limits and visibility are all configurable; the ids are not.
 
 **The burndown is a derivation.** It is reconstructed from `created` and
 `updated`, because there is no transition history to read. The UI says so on the
@@ -341,7 +352,7 @@ grepping the build output.
 
 Three layers: `npm run check`, `npm run smoke`, and `npm run smoke:matrix`.
 
-**Format, adapter, and tooling tests** (`node --test`, 122 assertions) cover the
+**Format, adapter, and tooling tests** (`node --test`, 128 assertions) cover the
 things that would damage a checkout: front-matter round-tripping,
 byte-preservation of the body, lenient parsing of hand-written shorthand, CRLF
 and BOM, path derivation and file moves, config defaults, WIP arithmetic, the
@@ -354,7 +365,7 @@ creates its own parents, a move that must delete the old file, and a file that
 throws on read and must be reported rather than dropped.
 
 **The smoke test** loads the app in real Chrome, opens the demo repository, drags
-a card between columns and confirms the move survives a reload, walks all six
+a card between columns and confirms the move survives a reload, walks all seven
 views, switches themes, exercises the command palette, and fails on any console
 error, page exception or failed request. It also writes a screenshot of every
 view, which is how the design gets reviewed rather than assumed.
@@ -388,19 +399,19 @@ All of it collapses under `prefers-reduced-motion`.
 ## 8. Roadmap
 
 **Built** — repository switching with remembered folder handles, Dexie-backed
-prefs and snapshot cache, 23 themes, kanban board with drag and drop and WIP
-limits, dense backlog with bulk scheduling, full issue panel with markdown
+prefs and snapshot cache, 23 themes, kanban board with drag and drop, soft and
+hard WIP limits per column and per sprint, configurable board geometry, sprint
+board lenses, dense backlog with bulk scheduling, full issue panel with markdown
 preview, sprint close with carry-over, epics with progress, the flow view, the
-command palette, unsaved-draft recovery, live filesystem watching with a
-plain-language change report, a generated agent guide, the `scrumit` sprint CLI
-and skill, the capability model, read-only folder access, artefact validation,
-the local sidecar with ETag conflicts and SSE, and the cross-adapter contract
-suite.
+command palette with body search, deep links, unsaved-draft recovery, live
+filesystem watching with a plain-language change report and a 50-entry activity
+log, a generated agent guide, the `scrumit` sprint CLI and skill, the capability
+model, read-only folder access, artefact validation, the local sidecar with ETag
+conflicts and SSE, the cross-adapter contract suite, and the sidecar git changes
+view with status, diff, log and explicit-path commits.
 
-**Next** — the git changes view (status, diff, commit) over the sidecar; issue
-templates from `.scrumit/templates`; an undo stack; bulk edit across a
-multi-selection; saved filter views; a change log of recent external edits
-rather than only the latest toast.
+**Next** — issue templates from `.scrumit/templates`; an undo stack; bulk edit
+across a multi-selection; saved filter views.
 
 **Later** — merge/rebase/push in the app (deliberately not until conflict
 handling is honest); burndown from recorded sprint history rather than

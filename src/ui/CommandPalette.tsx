@@ -8,6 +8,7 @@ import {
   epics,
   initialiseRepo,
   issues,
+  openBoardForSprint,
   openDemo,
   paletteOpen,
   repos,
@@ -38,6 +39,7 @@ const VIEWS: { id: View; label: string }[] = [
   { id: 'sprints', label: 'Go to sprints' },
   { id: 'epics', label: 'Go to epics' },
   { id: 'metrics', label: 'Go to flow and metrics' },
+  { id: 'changes', label: 'Go to git changes' },
   { id: 'settings', label: 'Go to settings' },
 ]
 
@@ -61,7 +63,8 @@ export function CommandPalette() {
     const list: Entry[] = []
 
     for (const issue of issues.value) {
-      const haystack = `${issue.id} ${issue.title} ${issue.labels.join(' ')}`.toLowerCase()
+      const haystack =
+        `${issue.id} ${issue.title} ${issue.labels.join(' ')} ${issue.body}`.toLowerCase()
       if (needle !== '' && !haystack.includes(needle)) continue
       list.push({
         id: `issue:${issue.id}`,
@@ -110,9 +113,9 @@ export function CommandPalette() {
         id: `sprint:${sprint.id}`,
         kind: 'sprint',
         label: sprint.name,
-        detail: sprint.state,
+        detail: `${sprint.state} · board`,
         run: () => {
-          void setView('sprints')
+          void openBoardForSprint(sprint.id)
         },
       })
     }
@@ -133,6 +136,19 @@ export function CommandPalette() {
         label: 'Explore the demo repo',
         run: () => {
           void openDemo()
+        },
+      },
+      {
+        label: 'Show the active sprint on the board',
+        run: () => {
+          const active = sprints.value.find((sprint) => sprint.state === 'active')
+          if (active) void openBoardForSprint(active.id)
+        },
+      },
+      {
+        label: 'Show the backlog on the board',
+        run: () => {
+          void openBoardForSprint('')
         },
       },
       {

@@ -16,6 +16,7 @@ import {
   watchRepo,
   writeTextFile,
 } from './fs-api.mjs'
+import { gitCommit, gitDiff, gitLog, gitStatus, hasGit } from './git.mjs'
 
 const PACKAGE_ROOT = fileURLToPath(new URL('..', import.meta.url))
 const VERSION = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf8')).version
@@ -136,7 +137,7 @@ function apiRoute(req, res, context) {
         canWrite: true,
         canWatch: true,
         access: 'http',
-        git: existsSync(join(root, '.git')) ? 'full' : 'none',
+        git: hasGit(root) ? 'full' : 'none',
       },
     })
     return
@@ -184,6 +185,57 @@ function apiRoute(req, res, context) {
     return
   }
 
+  if (url.pathname === '/api/git/status' && method === 'GET') {
+    void (async () => {
+      try {
+        sendJson(res, 200, await gitStatus(root))
+      } catch (error) {
+        fail(res, error)
+      }
+    })()
+    return
+  }
+
+  if (url.pathname === '/api/git/diff' && method === 'GET') {
+    void (async () => {
+      try {
+        const path = url.searchParams.get('path') ?? ''
+        sendJson(res, 200, await gitDiff(root, path))
+      } catch (error) {
+        fail(res, error)
+      }
+    })()
+    return
+  }
+
+  if (url.pathname === '/api/git/log' && method === 'GET') {
+    void (async () => {
+      try {
+        const limit = Number(url.searchParams.get('limit') ?? 5)
+        sendJson(res, 200, { commits: await gitLog(root, limit) })
+      } catch (error) {
+        fail(res, error)
+      }
+    })()
+    return
+  }
+
+  if (url.pathname === '/api/git/commit' && method === 'POST') {
+    void (async () => {
+      try {
+        const payload = JSON.parse(await readBody(req))
+        sendJson(res, 200, await gitCommit(root, payload))
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          fail(res, new HttpError(400, 'commit body must be JSON'))
+          return
+        }
+        fail(res, error)
+      }
+    })()
+    return
+  }
+
   if (url.pathname === '/api/events' && method === 'GET') {
     res.writeHead(200, {
       'content-type': 'text/event-stream',
@@ -205,7 +257,7 @@ function apiRoute(req, res, context) {
     sendJson(res, 200, {
       ok: true,
       version: VERSION,
-      endpoints: ['health', 'files', 'file', 'events'],
+      endpoints: ['health', 'files', 'file', 'events', 'git/status', 'git/diff', 'git/log', 'git/commit'],
     })
     return
   }

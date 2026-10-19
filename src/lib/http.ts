@@ -1,4 +1,5 @@
 import type { Capabilities } from './model.ts'
+import type { GitCommit, GitCommitResult, GitDiff, GitStatus } from './git.ts'
 import type {
   PermissionState,
   RepoSource,
@@ -78,6 +79,35 @@ export class HttpSource implements RepoSource {
     capabilities: Capabilities
   }> {
     const response = await this.#request('/api/health', {}, 4000)
+    if (!response.ok) await this.#fail(response)
+    return response.json()
+  }
+
+  async gitStatus(): Promise<GitStatus> {
+    const response = await this.#request('/api/git/status')
+    if (!response.ok) await this.#fail(response)
+    return response.json()
+  }
+
+  async gitDiff(path: string): Promise<GitDiff> {
+    const response = await this.#request(`/api/git/diff?${query({ path })}`)
+    if (!response.ok) await this.#fail(response)
+    return response.json()
+  }
+
+  async gitLog(limit = 5): Promise<GitCommit[]> {
+    const response = await this.#request(`/api/git/log?${query({ limit: String(limit) })}`)
+    if (!response.ok) await this.#fail(response)
+    const payload = (await response.json()) as { commits: GitCommit[] }
+    return payload.commits
+  }
+
+  async gitCommit(message: string, paths: string[]): Promise<GitCommitResult> {
+    const response = await this.#request('/api/git/commit', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message, paths }),
+    })
     if (!response.ok) await this.#fail(response)
     return response.json()
   }

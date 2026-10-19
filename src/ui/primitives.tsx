@@ -127,11 +127,13 @@ export function Progress({
   tone = 'accent',
   height = 4,
   marker,
+  softMarker,
 }: {
   value: number
   tone?: Tone
   height?: number
   marker?: number | null
+  softMarker?: number | null
 }) {
   const pct = Math.round(Math.min(Math.max(value, 0), 1) * 1000) / 10
   const color =
@@ -151,6 +153,13 @@ export function Progress({
         class="absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out"
         style={{ width: `${pct}%`, background: color }}
       />
+      {softMarker !== undefined && softMarker !== null ? (
+        <span
+          class="absolute inset-y-0 w-px bg-warn"
+          style={{ left: `${Math.min(Math.max(softMarker, 0), 1) * 100}%` }}
+          title="Flexible WIP limit"
+        />
+      ) : null}
       {marker !== undefined && marker !== null ? (
         <span
           class="absolute inset-y-0 w-px bg-ink-4"
@@ -222,12 +231,14 @@ export function Menu({
   children,
   align = 'left',
   class: cls,
+  menuClass,
   title,
 }: {
   label: ComponentChildren
   children: (close: () => void) => ComponentChildren
   align?: 'left' | 'right'
   class?: string
+  menuClass?: string
   title?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -253,19 +264,19 @@ export function Menu({
     <div class={`relative ${cls ?? ''}`} ref={ref}>
       <button
         type="button"
-        class="flex h-7 w-full items-center gap-1.5 rounded-sm border border-transparent px-2 text-[12px] text-ink-2 hover:border-line-2 hover:bg-panel-2 hover:text-ink"
+        class="flex h-7 w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-sm border border-transparent px-2 text-[12px] text-ink-2 hover:border-line-2 hover:bg-panel-2 hover:text-ink"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         title={title}
       >
-        {label}
-        <IconChevronDown size={12} class="opacity-60" />
+        <span class="min-w-0 flex-1 truncate text-left">{label}</span>
+        <IconChevronDown size={12} class="shrink-0 opacity-60" />
       </button>
       {open ? (
         <div
           class={`pop absolute z-40 mt-1 min-w-[190px] overflow-y-auto p-1 ${
             align === 'right' ? 'right-0' : 'left-0'
-          }`}
+          } ${menuClass ?? ''}`}
           style={{ maxHeight: '340px' }}
         >
           {children(() => setOpen(false))}

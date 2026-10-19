@@ -6,6 +6,8 @@ goal: Turn the sidecar into real git in the app, then land the first batch of ev
 start: 2026-11-16
 end: 2026-11-30
 capacity: 20
+wip_soft: 2
+wip_hard: 4
 ---
 
 Git stays intentionally small: status, diff, log, and commit. Anything that can

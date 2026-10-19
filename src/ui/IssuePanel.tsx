@@ -7,6 +7,7 @@ import { renderMarkdown } from '../lib/render.ts'
 import { ISSUE_TYPES, type IssueType, type Priority, type Status } from '../lib/model.ts'
 import { enterPanel } from '../lib/motion.ts'
 import {
+  activeRepo,
   allLabels,
   assignees,
   capabilities,
@@ -16,6 +17,7 @@ import {
   epicById,
   epics,
   issueIds,
+  notify,
   patchIssue,
   resolveConflict,
   saving,
@@ -24,7 +26,7 @@ import {
   sprints,
 } from '../lib/store.ts'
 import { AutoTextarea, Btn, Chip, Modal, Pts, Swatch } from './primitives.tsx'
-import { ICON_FOR_TYPE, IconTrash, IconX } from './icons.tsx'
+import { ICON_FOR_TYPE, IconLink, IconTrash, IconX } from './icons.tsx'
 
 export function IssuePanel() {
   const issue = selectedIssue.value
@@ -322,6 +324,23 @@ export function IssuePanel() {
         <span class="num shrink-0 text-[10.5px] text-ink-4">
           {humanDate(issue.created)}
         </span>
+        <Btn
+          variant="ghost"
+          icon
+          title="Copy a link to this card"
+          onClick={() => {
+            const repo = activeRepo.value
+            const url = `${window.location.origin}${window.location.pathname}${
+              repo ? `?repo=${encodeURIComponent(repo.id)}` : ''
+            }#${encodeURIComponent(issue.id)}`
+            void navigator.clipboard
+              .writeText(url)
+              .then(() => notify(`Copied a link to ${issue.id}.`, 'ok'))
+              .catch(() => notify('Could not copy the link in this browser.', 'error'))
+          }}
+        >
+          <IconLink size={13} />
+        </Btn>
         {canWrite ? (
           <Btn
             variant="ghost"

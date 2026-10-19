@@ -214,6 +214,7 @@ try {
     ['Sprints', 'Sprint 20', '06-sprints'],
     ['Epics', 'EPIC-01', '07-epics'],
     ['Flow', 'Velocity', '08-flow'],
+    ['Changes', 'Git needs the local sidecar', '24-changes'],
     ['Settings', 'Appearance', '09-settings'],
   ]) {
     await step(`view: ${view}`, async () => {

@@ -44,6 +44,12 @@ test('every epic and sprint state is documented', () => {
   }
 })
 
+test('sprint WIP keys are documented', () => {
+  for (const key of ['wip_soft', 'wip_hard']) {
+    assert.match(spec, new RegExp(`\`${key}\``), `llms.txt is missing the \`${key}\` sprint key`)
+  }
+})
+
 test('every front-matter key an issue can carry is documented', () => {
   const keys = [
     'id', 'title', 'status', 'type', 'epic', 'sprint', 'points', 'assignee',
@@ -61,7 +67,7 @@ test('the spec tells an agent how to handle a sidecar conflict', () => {
 })
 
 test('every config key is documented', () => {
-  for (const key of ['columns', 'wip', 'terminal', 'length_days', 'vocabulary', 'ceremony', 'dir']) {
+  for (const key of ['columns', 'wip', 'soft_wip', 'terminal', 'length_days', 'vocabulary', 'ceremony', 'dir']) {
     assert.match(spec, new RegExp(`\`?${key}\`?`), `llms.txt does not document config key \`${key}\``)
   }
 })

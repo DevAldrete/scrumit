@@ -6,13 +6,16 @@ import {
   currentSprint,
   issuesOfSprint,
   sprintProgress,
+  sprintWip,
   sprintWindowLabel,
 } from '../lib/metrics.ts'
 import type { Issue, Sprint, Status } from '../lib/model.ts'
 import {
   assignToSprint,
+  config,
   createSprint,
   issues,
+  openBoardForSprint,
   patchSprint,
   setStatuses,
   sprints,
@@ -20,7 +23,7 @@ import {
 } from '../lib/store.ts'
 import { BurnLine } from './charts.tsx'
 import { Avatar, Btn, Chip, Modal, Progress, StatusDot } from './primitives.tsx'
-import { ICON_FOR_TYPE, IconCheck, IconPlus } from './icons.tsx'
+import { ICON_FOR_TYPE, IconBoard, IconCheck, IconPlus } from './icons.tsx'
 
 export function Sprints() {
   const ordered = sprints.value.slice().sort((a, b) => b.id.localeCompare(a.id))
@@ -58,6 +61,7 @@ function SprintBlock({ sprint, isCurrent }: { sprint: Sprint; isCurrent: boolean
   const [closing, setClosing] = useState(false)
   const scoped = issuesOfSprint(issues.value, sprint.id)
   const progress = sprintProgress(sprint, issues.value)
+  const wip = sprintWip(sprint, issues.value, config.value)
   const finished = scoped.filter((issue) => issue.status === 'done')
   const unfinished = scoped.filter((issue) => issue.status !== 'done')
   const burn = sprint.state === 'active' ? burndown(sprint, issues.value) : []
@@ -90,6 +94,13 @@ function SprintBlock({ sprint, isCurrent }: { sprint: Sprint; isCurrent: boolean
         <span class="num text-[11.5px] text-ink-4">{sprintWindowLabel(sprint)}</span>
 
         <span class="ml-auto flex shrink-0 items-center gap-1.5">
+          <Btn
+            onClick={() => void openBoardForSprint(sprint.id)}
+            title={`View the board filtered to ${sprint.name}`}
+          >
+            <IconBoard size={13} />
+            Board
+          </Btn>
           {sprint.state !== 'active' ? (
             <Btn
               onClick={() =>
@@ -116,7 +127,7 @@ function SprintBlock({ sprint, isCurrent }: { sprint: Sprint; isCurrent: boolean
         </span>
       </header>
 
-      <div class="grid gap-4 px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_236px]">
+      <div class="grid gap-4 px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_260px]">
         <div class="flex min-w-0 flex-col gap-2.5">
           <label class="flex flex-col gap-1">
             <span class="label">Sprint goal</span>
@@ -138,6 +149,22 @@ function SprintBlock({ sprint, isCurrent }: { sprint: Sprint; isCurrent: boolean
             {sprint.capacity !== null ? (
               <span class="num text-[11.5px] text-ink-4">capacity {sprint.capacity} pts</span>
             ) : null}
+            <span
+              class="num text-[11.5px]"
+              style={{
+                color: wip.over
+                  ? 'var(--signal)'
+                  : wip.overSoft
+                    ? 'var(--warn)'
+                    : 'var(--ink-4)',
+              }}
+              title="In-flight tasks: doing and review, excluding backlog, todo and done."
+            >
+              WIP {wip.count}
+              {wip.soft !== null ? ` · soft ${wip.soft}` : ''}
+              {wip.hard !== null ? ` · hard ${wip.hard}` : ''}
+              {wip.over ? ' — over' : wip.overSoft ? ' — soft' : ''}
+            </span>
             {progress.scopeAdded > 0 ? (
               <span class="num text-[11.5px] text-warn">
                 +{progress.scopeAdded} pts added after the start
@@ -191,9 +218,52 @@ function SprintBlock({ sprint, isCurrent }: { sprint: Sprint; isCurrent: boolean
 
           <div class="grid grid-cols-2 gap-2">
             <label class="flex flex-col gap-1">
-              <span class="label">Starts</span>
+              <span class="label">Flexible WIP</span>
               <input
                 class="field"
+                type="number"
+                min="1"
+                step="1"
+                title="Crossing this warns on the board but never blocks a move"
+                value={sprint.wipSoft ?? ''}
+                placeholder="none"
+                onChange={(event) =>
+                  patchSprint(sprint.id, {
+                    wipSoft:
+                      event.currentTarget.value === ''
+                        ? null
+                        : Number(event.currentTarget.value),
+                  })
+                }
+              />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="label">Hard WIP</span>
+              <input
+                class="field"
+                type="number"
+                min="1"
+                step="1"
+                title="A move that would exceed this is refused"
+                value={sprint.wipHard ?? ''}
+                placeholder="none"
+                onChange={(event) =>
+                  patchSprint(sprint.id, {
+                    wipHard:
+                      event.currentTarget.value === ''
+                        ? null
+                        : Number(event.currentTarget.value),
+                  })
+                }
+              />
+            </label>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex flex-col gap-1">
+              <span class="label">Starts</span>
+              <input
+                class="field text-[11.5px]"
                 type="date"
                 value={sprint.start ?? ''}
                 onChange={(event) =>
@@ -204,7 +274,7 @@ function SprintBlock({ sprint, isCurrent }: { sprint: Sprint; isCurrent: boolean
             <label class="flex flex-col gap-1">
               <span class="label">Ends</span>
               <input
-                class="field"
+                class="field text-[11.5px]"
                 type="date"
                 value={sprint.end ?? ''}
                 onChange={(event) =>

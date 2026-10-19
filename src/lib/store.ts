@@ -1,6 +1,6 @@
 import { computed, signal } from '@preact/signals'
 import { AGENT_GUIDE_PATH, buildAgentGuide } from './agentGuide.ts'
-import { diffSnapshots, type SnapshotDiff } from './changes.ts'
+import { diffSnapshots, appendChangeLog, type ChangeLogEntry, type SnapshotDiff } from './changes.ts'
 import {
   overlayConflicts,
   type ConflictInfo,
@@ -39,9 +39,11 @@ import { ReadOnlySource, type ReadOnlyEntry } from './readonly.ts'
 import { loadSprintSkillFiles, SPRINT_SKILL_FOLDER } from './skill.ts'
 import type { ValidationIssue } from './validate.ts'
 import { personHue, todayISO } from './format.ts'
+import type { GitCommit, GitDiff, GitStatus } from './git.ts'
 import type {
   BoardColumnSpec,
   BoardConfig,
+  BoardLayout,
   Capabilities,
   Epic,
   Issue,
@@ -54,7 +56,7 @@ import {
   resolveCapabilities,
   writeRefusalMessage,
 } from './capabilities.ts'
-import { boardColumns, compareOrder } from './metrics.ts'
+import { boardColumns, compareOrder, countsAsSprintWip } from './metrics.ts'
 import { epicPath, issuePath, sprintPath } from './paths.ts'
 import {
   CONFIG_PATH,
@@ -67,7 +69,7 @@ import {
   type WatchEvent,
 } from './source.ts'
 
-export type View = 'board' | 'backlog' | 'sprints' | 'epics' | 'metrics' | 'settings'
+export type View = 'board' | 'backlog' | 'sprints' | 'epics' | 'metrics' | 'changes' | 'settings'
 export type LoadState = 'welcome' | 'loading' | 'ready' | 'error'
 
 export interface Filters {
@@ -85,6 +87,13 @@ export interface Filters {
 export const view = signal<View>('board')
 export const theme = signal('scrumit-light')
 export const compact = signal(false)
+export const layout = signal<BoardLayout>({
+  columnWidth: 268,
+  cardGap: 6,
+  separators: true,
+  cardBorders: true,
+  grid: false,
+})
 export const repos = signal<RepoRecord[]>([])
 export const activeRepo = signal<RepoRecord | null>(null)
 export const permission = signal<PermissionState>('granted')
@@ -155,6 +164,15 @@ export const watchNotice = signal<string | null>(null)
 /** Increments each time the board was rebuilt from disk. */
 export const externalUpdates = signal(0)
 export const lastExternalAt = signal<number | null>(null)
+/** The last 50 changes that arrived from outside the app. */
+export const externalLog = signal<ChangeLogEntry[]>([])
+
+/* Git is available only on the sidecar tier; everything here is inert otherwise. */
+export const gitStatus = signal<GitStatus | null>(null)
+export const gitLogEntries = signal<GitCommit[]>([])
+export const gitDiff = signal<GitDiff | null>(null)
+export const gitBusy = signal(false)
+export const gitError = signal<string | null>(null)
 
 let source: RepoSource | null = null
 
@@ -196,7 +214,8 @@ export const visibleIssues = computed(() => {
     }
     if (f.label && !issue.labels.includes(f.label)) return false
     if (text) {
-      const haystack = `${issue.id} ${issue.title} ${issue.labels.join(' ')}`.toLowerCase()
+      const haystack =
+        `${issue.id} ${issue.title} ${issue.labels.join(' ')} ${issue.body}`.toLowerCase()
       if (!haystack.includes(text)) return false
     }
     return true
@@ -209,6 +228,16 @@ export function setFilter(patch: Partial<Filters>): void {
 
 export function clearFilters(): void {
   filters.value = { text: '', assignee: null, epic: null, label: null, sprint: null }
+}
+
+/** Jump straight to a board with a sprint lens applied. */
+export async function openBoardForSprint(sprint: string | null): Promise<void> {
+  setFilter({ sprint })
+  await setView('board')
+}
+
+export function clearExternalLog(): void {
+  externalLog.value = []
 }
 
 export const board = computed(() => boardColumns(visibleIssues.value, config.value))
@@ -439,6 +468,7 @@ async function applyExternal(attempt = 0): Promise<void> {
     const diff = await refreshFromDisk()
     if (!diff) return
     if (diff.total > 0) {
+      externalLog.value = appendChangeLog(externalLog.value, diff)
       notify(diff.summary, 'ok', diff.details)
     } else if (gitHead && paths.length === 0) {
       notify(`Branch is now ${gitBranch.value ?? 'detached'}`, 'info')
@@ -461,7 +491,10 @@ export async function refreshOnReturn(hiddenForMs: number): Promise<void> {
   if (Date.now() - (lastExternalAt.value ?? 0) < 3000) return
   try {
     const diff = await refreshFromDisk()
-    if (diff && diff.total > 0) notify(diff.summary, 'ok', diff.details)
+    if (diff && diff.total > 0) {
+      externalLog.value = appendChangeLog(externalLog.value, diff)
+      notify(diff.summary, 'ok', diff.details)
+    }
   } catch {
     // A background refresh that fails is not worth interrupting anyone over.
   }
@@ -709,6 +742,10 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
   errorMessage.value = null
   serverDownNotified = false
   conflicts.value = new Map()
+  gitStatus.value = null
+  gitLogEntries.value = []
+  gitDiff.value = null
+  gitError.value = null
   try {
     if (options.source) {
       // Read-only fixtures and tests hand scrumit a source directly. It is not
@@ -1015,6 +1052,10 @@ export async function closeRepo(): Promise<void> {
   activeRepo.value = null
   validation.value = []
   conflicts.value = new Map()
+  gitStatus.value = null
+  gitLogEntries.value = []
+  gitDiff.value = null
+  gitError.value = null
   issues.value = []
   epics.value = []
   sprints.value = []
@@ -1122,6 +1163,48 @@ function nextOrder(status: Status, excludeId?: string): number {
   return last ? last.order + 10 : 10
 }
 
+/** The message to show when a move would break a hard column limit. */
+function columnHardLimit(status: Status, excludeId?: string): string | null {
+  const column = config.value.columns.find((item) => item.id === status)
+  if (!column || column.wip === null) return null
+  const count = issues.value.filter(
+    (issue) => issue.status === status && issue.id !== excludeId,
+  ).length
+  if (count < column.wip) return null
+  return `${column.name} is at its hard WIP limit (${column.wip}). Move or finish something first.`
+}
+
+/** The message to show when a move would break a hard sprint WIP limit. */
+function sprintHardLimit(
+  sprintId: string | null,
+  nextStatus: Status,
+  current?: Issue,
+): string | null {
+  if (!sprintId) return null
+  const sprint = sprints.value.find((item) => item.id === sprintId)
+  if (!sprint || sprint.wipHard == null) return null
+  if (!countsAsSprintWip(nextStatus, config.value)) return null
+  const alreadyCounted =
+    current !== undefined &&
+    current.sprint === sprintId &&
+    countsAsSprintWip(current.status, config.value)
+  if (alreadyCounted) return null
+  const count = issues.value.filter(
+    (issue) =>
+      issue.sprint === sprintId &&
+      issue.id !== current?.id &&
+      countsAsSprintWip(issue.status, config.value),
+  ).length
+  if (count < sprint.wipHard) return null
+  return `${sprint.name} is at its hard WIP limit (${sprint.wipHard}). Finish or move work out first.`
+}
+
+function denyWip(message: string | null): boolean {
+  if (message === null) return false
+  notify(message, 'error')
+  return true
+}
+
 export interface NewIssueInput {
   title: string
   status: Status
@@ -1140,6 +1223,12 @@ export async function createIssue(input: NewIssueInput): Promise<Issue | null> {
   if (!src) return null
   if (!capabilities.value.canWrite) {
     refuseWrite()
+    return null
+  }
+  if (
+    denyWip(columnHardLimit(input.status)) ||
+    denyWip(sprintHardLimit(input.sprint ?? null, input.status))
+  ) {
     return null
   }
   const id = newIssueId(
@@ -1188,6 +1277,12 @@ export function patchIssue(id: string, patch: Partial<Issue>, immediate = false)
   const existing = issues.value.find((i) => i.id === id)
   if (!existing) return
   const next: Issue = { ...existing, ...patch, updated: todayISO() }
+  if (patch.status !== undefined && patch.status !== existing.status) {
+    if (denyWip(columnHardLimit(patch.status, id))) return
+    if (denyWip(sprintHardLimit(next.sprint, next.status, existing))) return
+  } else if (patch.sprint !== undefined && patch.sprint !== existing.sprint) {
+    if (denyWip(sprintHardLimit(next.sprint, next.status, existing))) return
+  }
   issues.value = issues.value.map((i) => (i.id === id ? next : i))
   queueDraft(id)
   queueIssueWrite(id, immediate ? 0 : 900)
@@ -1227,6 +1322,11 @@ export async function moveIssue(id: string, toStatus: Status, toIndex: number): 
   }
   const moving = issues.value.find((i) => i.id === id)
   if (!moving) return
+
+  if (moving.status !== toStatus) {
+    if (denyWip(columnHardLimit(toStatus, id))) return
+    if (denyWip(sprintHardLimit(moving.sprint, toStatus, moving))) return
+  }
 
   const target = issues.value
     .filter((i) => i.status === toStatus && i.id !== id)
@@ -1455,6 +1555,8 @@ export async function createSprint(): Promise<Sprint | null> {
     start,
     end,
     capacity: null,
+    wipSoft: null,
+    wipHard: null,
     state: 'planned',
     notes: '',
     path: null,
@@ -1478,6 +1580,28 @@ export async function assignToSprint(issueIds: string[], sprintId: string | null
     refuseWrite()
     return
   }
+  const sprint = sprintId ? sprints.value.find((item) => item.id === sprintId) : null
+  if (sprint && sprint.wipHard != null) {
+    const moving = new Set(issueIds)
+    const already = issues.value.filter(
+      (issue) =>
+        issue.sprint === sprintId &&
+        !moving.has(issue.id) &&
+        countsAsSprintWip(issue.status, config.value),
+    ).length
+    const incoming = issueIds.filter((id) => {
+      const issue = issues.value.find((item) => item.id === id)
+      if (!issue || !countsAsSprintWip(issue.status, config.value)) return false
+      return !(issue.sprint === sprintId)
+    }).length
+    if (already + incoming > sprint.wipHard) {
+      notify(
+        `${sprint.name} is at its hard WIP limit (${sprint.wipHard}). Finish or move work out first.`,
+        'error',
+      )
+      return
+    }
+  }
   for (const id of issueIds) patchIssue(id, { sprint: sprintId }, true)
   await Promise.all(issueIds.map((id) => persistIssue(id)))
   notify(
@@ -1496,8 +1620,95 @@ export async function setStatuses(
     refuseWrite()
     return
   }
+  const column = config.value.columns.find((item) => item.id === status)
+  if (column && column.wip !== null) {
+    const selected = new Set(ids)
+    const already = issues.value.filter(
+      (issue) => issue.status === status && !selected.has(issue.id),
+    ).length
+    if (already + ids.length > column.wip) {
+      notify(
+        `${column.name} is at its hard WIP limit (${column.wip}). Move or finish something first.`,
+        'error',
+      )
+      return
+    }
+  }
   for (const id of ids) patchIssue(id, { status, order: nextOrder(status, id) }, true)
   await Promise.all(ids.map((id) => persistIssue(id)))
+}
+
+/* -------------------------------------------------------------------------- */
+/* Git                                                                        */
+/* -------------------------------------------------------------------------- */
+
+export async function loadGit(): Promise<void> {
+  const src = source
+  gitError.value = null
+  if (!src?.gitStatus) {
+    gitStatus.value = null
+    gitLogEntries.value = []
+    gitDiff.value = null
+    return
+  }
+  gitBusy.value = true
+  try {
+    const [status, log] = await Promise.all([
+      src.gitStatus(),
+      src.gitLog ? src.gitLog(5) : Promise.resolve([]),
+    ])
+    gitStatus.value = status
+    gitLogEntries.value = log
+    if (gitDiff.value && !status.changes.some((change) => change.path === gitDiff.value?.path)) {
+      gitDiff.value = null
+    }
+  } catch (error) {
+    gitError.value = describeError(error)
+  } finally {
+    gitBusy.value = false
+  }
+}
+
+export async function loadGitDiff(path: string): Promise<void> {
+  const src = source
+  if (!src?.gitDiff) return
+  gitBusy.value = true
+  try {
+    gitDiff.value = await src.gitDiff(path)
+  } catch (error) {
+    gitError.value = describeError(error)
+  } finally {
+    gitBusy.value = false
+  }
+}
+
+/** Commit exactly the paths the user selected — never the whole tree. */
+export async function commitPaths(message: string, paths: string[]): Promise<boolean> {
+  const src = source
+  if (!src?.gitCommit) {
+    notify('Committing is available when the repository is opened through `scrumit serve`.', 'error')
+    return false
+  }
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return false
+  }
+  if (message.trim() === '' || paths.length === 0) return false
+  gitBusy.value = true
+  gitError.value = null
+  try {
+    const result = await src.gitCommit(message.trim(), paths)
+    notify(`Committed ${result.short}.`, 'ok')
+    await loadGit()
+    return true
+  } catch (error) {
+    const text = describeError(error)
+    gitError.value = text
+    notify(`Could not commit: ${text}`, 'error')
+    return false
+  } finally {
+    gitBusy.value = false
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1547,10 +1758,37 @@ export async function toggleCompact(): Promise<void> {
   await setPref('compact', compact.value)
 }
 
+export async function patchLayout(patch: Partial<BoardLayout>): Promise<void> {
+  layout.value = { ...layout.value, ...patch }
+  await setPref('layout', layout.value)
+}
+
+/** Set the board view to a sprint and keep the scope visible in the filter bar. */
+export function applyLocation(): void {
+  const params = new URLSearchParams(window.location.search)
+  const sprint = params.get('sprint')
+  if (sprint !== null) {
+    setFilter({ sprint: sprint === 'backlog' || sprint === 'none' ? '' : sprint })
+  }
+  const raw = decodeURIComponent(window.location.hash.replace(/^#/, ''))
+  if (raw === '' || raw.startsWith('token=') || raw.startsWith('sprint=')) return
+  if (issueById.value.has(raw)) select(raw)
+}
+
+export function clearDeepLink(): void {
+  if (window.location.hash === '') return
+  window.history.replaceState(
+    null,
+    '',
+    `${window.location.pathname}${window.location.search}`,
+  )
+}
+
 export async function bootstrap(): Promise<void> {
-  const [savedTheme, savedCompact, savedView, lastRepoId, repoList] = await Promise.all([
+  const [savedTheme, savedCompact, savedLayout, savedView, lastRepoId, repoList] = await Promise.all([
     getPref<string>('theme', ''),
     getPref<boolean>('compact', false),
+    getPref<BoardLayout>('layout', layout.value),
     getPref<View>('view', 'board'),
     getPref<string | null>('activeRepoId', null),
     listRepos(),
@@ -1564,11 +1802,16 @@ export async function bootstrap(): Promise<void> {
       : savedTheme,
   )
   compact.value = savedCompact
+  if (savedLayout && typeof savedLayout === 'object') {
+    layout.value = { ...layout.value, ...savedLayout }
+  }
   view.value = savedView
   repos.value = repoList
 
-  if (lastRepoId === null) return
-  const record = repoList.find((r) => r.id === lastRepoId)
+  const requestedRepo = new URLSearchParams(window.location.search).get('repo')
+  const repoId = requestedRepo ?? lastRepoId
+  if (repoId === null) return
+  const record = repoList.find((r) => r.id === repoId)
   if (!record) return
 
   // Auto-open only when it needs no prompt. A silent permission prompt is not

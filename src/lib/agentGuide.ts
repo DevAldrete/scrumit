@@ -59,7 +59,11 @@ export function buildAgentPreamble(ctx: AgentContext): string {
               ? `${humanDate(sprint.start)} to ${humanDate(sprint.end)}`
               : 'no dates'
           const capacity = sprint.capacity === null ? '' : `, capacity ${sprint.capacity} pts`
-          return `- \`${sprint.id}\` — ${sprint.name} (${sprint.state}, ${window}${capacity}, ${scoped.length} issues, ${sumPoints(scoped)} pts)`
+          const wip =
+            sprint.wipSoft == null && sprint.wipHard == null
+              ? ''
+              : `, WIP ${sprint.wipSoft ?? '–'}/${sprint.wipHard ?? '–'} soft/hard`
+          return `- \`${sprint.id}\` — ${sprint.name} (${sprint.state}, ${window}${capacity}${wip}, ${scoped.length} issues, ${sumPoints(scoped)} pts)`
         })
 
   const columnLines = config.columns.map((column) => {
@@ -67,6 +71,7 @@ export function buildAgentPreamble(ctx: AgentContext): string {
     const bits = [
       `\`${column.id}\` → **${column.name}**`,
       column.wip === null ? 'no WIP limit' : `WIP limit ${column.wip}`,
+      ...(column.softWip == null ? [] : [`soft WIP ${column.softWip}`]),
       `${scoped.length} issues, ${sumPoints(scoped)} pts`,
     ]
     if (column.terminal) bits.push('terminal')
