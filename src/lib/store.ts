@@ -27,6 +27,7 @@ import {
 import { DemoSource } from './demo.ts'
 import { FsaSource, fsaSupported, pickDirectory } from './fsa.ts'
 import { loadSprintSkillFiles, SPRINT_SKILL_FOLDER } from './skill.ts'
+import type { ValidationIssue } from './validate.ts'
 import { personHue, todayISO } from './format.ts'
 import type {
   BoardColumnSpec,
@@ -95,6 +96,7 @@ export const busy = signal(false)
 export const saving = signal(false)
 export const errorMessage = signal<string | null>(null)
 export const skippedFiles = signal<{ path: string; reason: string }[]>([])
+export const validation = signal<ValidationIssue[]>([])
 export const drafts = signal<DraftRecord[]>([])
 
 export const config = signal<BoardConfig>(defaultConfig())
@@ -360,9 +362,10 @@ async function refreshFromDisk(): Promise<SnapshotDiff | null> {
   // Land anything the user is still typing first, so their edit is not
   // silently reverted by a refresh that read the file mid-keystroke.
   await flush()
-  const { snapshot, skipped } = await scanRepo(src, repo.id)
+  const { snapshot, skipped, validation: findings } = await scanRepo(src, repo.id)
   applySnapshot(snapshot)
   skippedFiles.value = skipped
+  validation.value = findings
   await writeSnapshot(snapshot)
 
   externalUpdates.value += 1
@@ -624,6 +627,7 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
           permission.value = 'denied'
           activeRepo.value = { ...record, handlePersisted: false }
           applySnapshot(cached)
+          validation.value = []
           loadState.value = 'ready'
         } else {
           handleLost.value = false
@@ -646,6 +650,7 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
         activeRepo.value = record
         const cached = await readSnapshot(record.id)
         if (cached) applySnapshot(cached)
+        validation.value = []
         loadState.value = 'ready'
         return
       }
@@ -690,15 +695,17 @@ export async function rescan(): Promise<void> {
   if (!src || !repo) return
   loadState.value = 'loading'
   try {
-    const { snapshot, skipped } = await scanRepo(src, repo.id)
+    const { snapshot, skipped, validation: findings } = await scanRepo(src, repo.id)
     applySnapshot(snapshot)
     skippedFiles.value = skipped
+    validation.value = findings
     await writeSnapshot(snapshot)
     loadState.value = 'ready'
   } catch (error) {
     const cached = await readSnapshot(repo.id)
     if (cached) {
       applySnapshot(cached)
+      validation.value = []
       notify('Rescan failed — showing the last saved view.', 'error')
     }
     errorMessage.value = describeError(error)
@@ -805,6 +812,7 @@ export async function closeRepo(): Promise<void> {
   sourceCapabilities.value = { ...RESTRICTIVE_CAPABILITIES }
   handleLost.value = false
   activeRepo.value = null
+  validation.value = []
   issues.value = []
   epics.value = []
   sprints.value = []
@@ -1383,6 +1391,7 @@ export async function bootstrap(): Promise<void> {
       }
       activeRepo.value = { ...record, handlePersisted: false }
       applySnapshot(cached)
+      validation.value = []
       loadState.value = 'ready'
     }
     return
@@ -1398,6 +1407,7 @@ export async function bootstrap(): Promise<void> {
     const cached = await readSnapshot(record.id)
     if (cached) {
       applySnapshot(cached)
+      validation.value = []
       loadState.value = 'ready'
     }
   }

@@ -1,5 +1,6 @@
 import { defaultConfig, parseConfig } from './config.ts'
 import { classify, isMarkdown, parseEpic, parseIssue, parseSprint } from './artefacts.ts'
+import { validateScan, type ValidationIssue } from './validate.ts'
 import type { BoardConfig, Capabilities, Epic, Issue, RepoSnapshot, Sprint } from './model.ts'
 
 export type PermissionState = 'granted' | 'prompt' | 'denied' | 'unsupported'
@@ -84,6 +85,8 @@ export interface ScanResult {
   skipped: { path: string; reason: string }[]
   /** Sprint ids referenced by issues but missing a sprint.md. */
   orphanSprints: string[]
+  /** Artefact problems an agent-written repository tends to have. */
+  validation: ValidationIssue[]
 }
 
 export async function scanRepo(
@@ -171,6 +174,11 @@ export async function scanRepo(
   epics.sort((a, b) => a.id.localeCompare(b.id))
   sprints.sort((a, b) => b.id.localeCompare(a.id))
 
+  const textByPath = new Map<string, string>()
+  for (const entry of texts) {
+    if (entry) textByPath.set(entry.path, entry.text)
+  }
+
   return {
     snapshot: {
       repoId,
@@ -186,6 +194,7 @@ export async function scanRepo(
     },
     skipped,
     orphanSprints,
+    validation: validateScan({ config, issues, epics, sprints, texts: textByPath, skipped }),
   }
 }
 

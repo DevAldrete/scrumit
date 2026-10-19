@@ -12,7 +12,15 @@ import {
   backlogIssues,
 } from '../lib/metrics.ts'
 import type { Issue } from '../lib/model.ts'
-import { config, issues, scannedAt, skippedFiles, sprints, toggleSelected } from '../lib/store.ts'
+import {
+  config,
+  issues,
+  scannedAt,
+  skippedFiles,
+  sprints,
+  toggleSelected,
+  validation,
+} from '../lib/store.ts'
 import { BurnLine, FlowBand, VelocityBars } from './charts.tsx'
 import { Avatar, Progress } from './primitives.tsx'
 import { ICON_FOR_TYPE } from './icons.tsx'
@@ -194,6 +202,43 @@ export function Metrics() {
                     {file.path}
                   </span>
                   <span class="shrink-0 text-[11px] text-signal">{file.reason}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+
+        <Section
+          title="Artefact validation"
+          hint="what an agent-written repository gets wrong"
+        >
+          {validation.value.length === 0 ? (
+            <p class="text-[11.5px] text-ink-4">
+              No duplicate ids, dangling references, unknown enums, or path drift.
+            </p>
+          ) : (
+            <ul class="inset">
+              {validation.value.map((finding, index) => (
+                <li
+                  key={`${finding.path}-${finding.code}-${index}`}
+                  class="border-b border-line px-2.5 py-1.5 last:border-b-0"
+                >
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="num shrink-0 text-[10.5px] uppercase"
+                      style={{
+                        color:
+                          finding.severity === 'error' ? 'var(--signal)' : 'var(--ink-4)',
+                      }}
+                    >
+                      {finding.severity}
+                    </span>
+                    <span class="num min-w-0 flex-1 truncate text-[11.5px] text-ink-2">
+                      {finding.path}
+                    </span>
+                    <span class="shrink-0 text-[10.5px] text-ink-4">{finding.code}</span>
+                  </div>
+                  <p class="mt-0.5 text-[11px] leading-snug text-ink-3">{finding.message}</p>
                 </li>
               ))}
             </ul>
