@@ -1,7 +1,7 @@
 ---
 id: ISSUE-10
 title: Build the local sidecar server core
-status: todo
+status: doing
 type: story
 epic: EPIC-02
 sprint: 2026-S02
@@ -10,8 +10,9 @@ priority: 1
 labels: [server, security]
 created: 2026-10-19
 updated: 2026-10-19
-order: 30
+order: 10
 blocked_by: [ISSUE-4]
+assignee: agent-opencode
 ---
 
 ## Context
