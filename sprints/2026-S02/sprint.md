@@ -1,10 +1,10 @@
 ---
 id: 2026-S02
 name: Read-only and sidecar
-state: planned
+state: active
 goal: Make Safari and Firefox useful, then give every browser a writable local server with stale-write protection.
-start: 2026-11-02
-end: 2026-11-16
+start: 2026-10-19
+end: 2026-11-02
 capacity: 36
 ---
 
