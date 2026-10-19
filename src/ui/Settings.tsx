@@ -6,6 +6,7 @@ import { bytes, personName, relativeTime } from '../lib/format.ts'
 import { STATUS_LABEL, type Status } from '../lib/model.ts'
 import {
   activeRepo,
+  capabilities,
   compact,
   config,
   drafts,
@@ -162,7 +163,10 @@ export function Settings() {
                 {isDemo ? (
                   <Btn onClick={() => void resetDemo()}>Reset the demo data</Btn>
                 ) : (
-                  <Btn onClick={() => void initialiseRepo()}>
+                  <Btn
+                    disabled={!capabilities.value.canWrite}
+                    onClick={() => void initialiseRepo()}
+                  >
                     Write a starter config.yaml
                   </Btn>
                 )}
@@ -189,6 +193,10 @@ export function Settings() {
         </Section>
 
         <Section title="Board" hint="written to .scrumit/config.yaml">
+          <fieldset
+            disabled={!capabilities.value.canWrite}
+            class="m-0 min-w-0 border-0 p-0"
+          >
           <div class="flex flex-col gap-3">
             <div class="grid gap-2 sm:grid-cols-3">
               <label class="flex flex-col gap-1">
@@ -362,6 +370,7 @@ export function Settings() {
               agreed it means.
             </p>
           </div>
+          </fieldset>
         </Section>
 
         <AgentSection />
@@ -455,7 +464,11 @@ function AgentSection() {
         </p>
 
         <div class="flex flex-wrap items-center gap-2">
-          <Btn variant="primary" onClick={() => void writeAgentGuide()}>
+          <Btn
+            variant="primary"
+            disabled={!capabilities.value.canWrite}
+            onClick={() => void writeAgentGuide()}
+          >
             <IconTerminal size={13} />
             Write {AGENT_GUIDE_PATH}
           </Btn>
@@ -503,7 +516,7 @@ function AgentSection() {
             </label>
             <Btn
               variant="primary"
-              disabled={permission.value !== 'granted'}
+              disabled={!capabilities.value.canWrite}
               onClick={() => void writeAgentSkill(skillDir)}
             >
               <IconTerminal size={13} />

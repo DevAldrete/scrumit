@@ -5,6 +5,7 @@ import { compareOrder } from '../lib/metrics.ts'
 import type { Issue, Status } from '../lib/model.ts'
 import {
   assignToSprint,
+  capabilities,
   epicById,
   moveIssue,
   setStatuses,
@@ -18,6 +19,7 @@ import { ICON_FOR_TYPE, IconBlocked, IconGrip, IconX } from './icons.tsx'
 export function Backlog() {
   const container = useRef<HTMLDivElement>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const canWrite = capabilities.value.canWrite
 
   const rows = visibleIssues.value
     .filter((issue) => issue.sprint === null)
@@ -29,6 +31,7 @@ export function Backlog() {
     let origin: { parent: HTMLElement; next: Element | null } | null = null
 
     const sortable = Sortable.create(element, {
+      disabled: !canWrite,
       animation: 140,
       easing: 'cubic-bezier(0.22, 0.8, 0.24, 1)',
       handle: '[data-grip]',
@@ -58,7 +61,7 @@ export function Backlog() {
       },
     })
     return () => sortable.destroy()
-  }, [])
+  }, [canWrite])
 
   function toggle(id: string) {
     setSelected((current) => {
@@ -82,7 +85,9 @@ export function Backlog() {
           {rows.reduce((sum, i) => sum + (i.points ?? 0), 0)} pts
         </span>
         <span class="ml-auto text-[11px] text-ink-4">
-          Drag by the grip to set the order the board will show.
+          {canWrite
+            ? 'Drag by the grip to set the order the board will show.'
+            : 'Read-only: the backlog order cannot be changed here.'}
         </span>
       </div>
 
@@ -104,7 +109,7 @@ export function Backlog() {
         )}
       </div>
 
-      {ids.length > 0 ? (
+      {canWrite && ids.length > 0 ? (
         <BulkBar ids={ids} onClear={() => setSelected(new Set())} />
       ) : null}
     </div>
@@ -131,20 +136,24 @@ function Row({
       }`}
       data-issue={issue.id}
     >
-      <input
-        type="checkbox"
-        class="shrink-0 accent-[var(--accent)]"
-        checked={selected}
-        onChange={onToggle}
-        aria-label={`Select ${issue.id}`}
-      />
-      <span
-        class="shrink-0 cursor-grab text-ink-4 opacity-0 group-hover:opacity-100"
-        data-grip
-        title="Reorder"
-      >
-        <IconGrip size={13} />
-      </span>
+      {capabilities.value.canWrite ? (
+        <input
+          type="checkbox"
+          class="shrink-0 accent-[var(--accent)]"
+          checked={selected}
+          onChange={onToggle}
+          aria-label={`Select ${issue.id}`}
+        />
+      ) : null}
+      {capabilities.value.canWrite ? (
+        <span
+          class="shrink-0 cursor-grab text-ink-4 opacity-0 group-hover:opacity-100"
+          data-grip
+          title="Reorder"
+        >
+          <IconGrip size={13} />
+        </span>
+      ) : null}
 
       <span class="num w-[72px] shrink-0 text-[11px] text-ink-3">{issue.id}</span>
 

@@ -3,7 +3,15 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { enterStagger, settle, sweep } from '../lib/motion.ts'
 import type { ColumnStat } from '../lib/metrics.ts'
 import type { Status } from '../lib/model.ts'
-import { board, beginInteraction, compact, createIssue, endInteraction, moveIssue } from '../lib/store.ts'
+import {
+  board,
+  beginInteraction,
+  capabilities,
+  compact,
+  createIssue,
+  endInteraction,
+  moveIssue,
+} from '../lib/store.ts'
 import { IconPlus } from './icons.tsx'
 import { IssueCard } from './IssueCard.tsx'
 import { Btn, Progress } from './primitives.tsx'
@@ -52,6 +60,7 @@ function Column({
   const body = useRef<HTMLDivElement>(null)
   const sweepLine = useRef<HTMLDivElement>(null)
   const [composing, setComposing] = useState(false)
+  const canWrite = capabilities.value.canWrite
 
   useEffect(() => {
     if (flashNonce > 0 && sweepLine.current) sweep(sweepLine.current)
@@ -65,6 +74,7 @@ function Column({
 
     const sortable = Sortable.create(element, {
       group: 'board',
+      disabled: !canWrite,
       animation: 140,
       easing: 'cubic-bezier(0.22, 0.8, 0.24, 1)',
       ghostClass: 'sortable-ghost',
@@ -120,7 +130,7 @@ function Column({
       endInteraction()
       sortable.destroy()
     }
-  }, [column.id])
+  }, [column.id, canWrite])
 
   const width = compact.value ? 234 : 268
 
@@ -176,20 +186,22 @@ function Column({
         ))}
       </div>
 
-      <div class="shrink-0 px-2 pb-2">
-        {composing ? (
-          <Composer status={column.id} onClose={() => setComposing(false)} />
-        ) : (
-          <button
-            type="button"
-            class="btn btn-ghost w-full justify-start text-ink-3"
-            onClick={() => setComposing(true)}
-          >
-            <IconPlus size={13} />
-            Add to {column.name.toLowerCase()}
-          </button>
-        )}
-      </div>
+      {canWrite ? (
+        <div class="shrink-0 px-2 pb-2">
+          {composing ? (
+            <Composer status={column.id} onClose={() => setComposing(false)} />
+          ) : (
+            <button
+              type="button"
+              class="btn btn-ghost w-full justify-start text-ink-3"
+              onClick={() => setComposing(true)}
+            >
+              <IconPlus size={13} />
+              Add to {column.name.toLowerCase()}
+            </button>
+          )}
+        </div>
+      ) : null}
     </section>
   )
 }

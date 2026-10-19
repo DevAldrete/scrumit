@@ -3,6 +3,7 @@ import {
   activeRepo,
   addLocalRepo,
   bootstrap,
+  capabilities,
   externalUpdates,
   fileCount,
   flush,
@@ -213,20 +214,24 @@ export function App() {
   return (
     <div class="flex h-full flex-col">
       <TopBar />
-      {permission.value !== 'granted' ? (
+      {!capabilities.value.canWrite ? (
         <div class="flex shrink-0 items-center gap-2 border-b border-line bg-warn-soft px-3 py-1.5">
           <IconWarn size={13} />
           <span class="text-[11.5px] text-ink-2">
             {handleLost.value
-              ? 'scrumit is showing the last saved view. This browser cannot remember the folder handle, so open the folder again to write.'
-              : 'scrumit is showing the last saved index. It cannot write to this folder until you grant access in this browser session.'}
+              ? 'Read-only — scrumit is showing the last saved view. This browser cannot remember the folder handle, so open the folder again to write.'
+              : permission.value !== 'granted' && capabilities.value.access === 'handle'
+                ? 'scrumit is showing the last saved index. It cannot write to this folder until you grant access in this browser session.'
+                : 'Read-only — this browser can open the folder but not write to it. Run `npx scrumit serve` for full access.'}
           </span>
-          <Btn
-            class="ml-auto shrink-0"
-            onClick={() => void (handleLost.value ? addLocalRepo() : reconnect())}
-          >
-            {handleLost.value ? 'Open the folder again' : 'Grant access'}
-          </Btn>
+          {handleLost.value || (permission.value !== 'granted' && capabilities.value.access === 'handle') ? (
+            <Btn
+              class="ml-auto shrink-0"
+              onClick={() => void (handleLost.value ? addLocalRepo() : reconnect())}
+            >
+              {handleLost.value ? 'Open the folder again' : 'Grant access'}
+            </Btn>
+          ) : null}
         </div>
       ) : null}
 

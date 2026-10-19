@@ -4,7 +4,9 @@ import type { View } from '../lib/store.ts'
 import {
   activeRepo,
   addLocalRepo,
+  capabilities,
   epics,
+  initialiseRepo,
   issues,
   openDemo,
   paletteOpen,
@@ -16,6 +18,7 @@ import {
   themeList,
   setTheme,
   view,
+  writeAgentGuide,
 } from '../lib/store.ts'
 import { Swatch } from './primitives.tsx'
 import { IconLayers, IconRefresh, IconTarget } from './icons.tsx'
@@ -114,7 +117,12 @@ export function CommandPalette() {
       })
     }
 
-    const commands: { label: string; detail?: string; run: () => void }[] = [
+    const commands: {
+      label: string
+      detail?: string
+      mutating?: boolean
+      run: () => void
+    }[] = [
       {
         label: 'Open a repository folder…',
         run: () => {
@@ -131,6 +139,22 @@ export function CommandPalette() {
         label: 'Rescan the repository',
         run: () => {
           void rescan()
+        },
+      },
+      {
+        label: 'Write .scrumit/AGENTS.md',
+        detail: 'write',
+        mutating: true,
+        run: () => {
+          void writeAgentGuide()
+        },
+      },
+      {
+        label: 'Initialise .scrumit/config.yaml',
+        detail: 'write',
+        mutating: true,
+        run: () => {
+          void initialiseRepo()
         },
       },
       ...repos.value
@@ -153,6 +177,7 @@ export function CommandPalette() {
 
     for (const command of commands) {
       if (needle !== '' && !command.label.toLowerCase().includes(needle)) continue
+      if (command.mutating && !capabilities.value.canWrite) continue
       list.push({
         id: `command:${command.label}`,
         kind: 'command',
@@ -163,7 +188,16 @@ export function CommandPalette() {
     }
 
     return list.slice(0, 60)
-  }, [open, query, issues.value, epics.value, sprints.value, repos.value, view.value])
+  }, [
+    open,
+    query,
+    issues.value,
+    epics.value,
+    sprints.value,
+    repos.value,
+    view.value,
+    capabilities.value.canWrite,
+  ])
 
   useEffect(() => {
     setCursor((current) => Math.min(current, Math.max(entries.length - 1, 0)))

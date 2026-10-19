@@ -8,6 +8,7 @@ import { enterPanel } from '../lib/motion.ts'
 import {
   allLabels,
   assignees,
+  capabilities,
   config,
   deleteIssue,
   epicById,
@@ -27,6 +28,7 @@ export function IssuePanel() {
   const panel = useRef<HTMLElement>(null)
   const [tab, setTab] = useState<'write' | 'preview'>('write')
   const [confirming, setConfirming] = useState(false)
+  const canWrite = capabilities.value.canWrite
 
   const issueId = issue?.id ?? null
   const body = issue?.body ?? ''
@@ -87,6 +89,7 @@ export function IssuePanel() {
           value={issue.title}
           rows={2}
           aria-label="Title"
+          readOnly={!canWrite}
           onInput={(value) => patchIssue(issue.id, { title: value })}
         />
 
@@ -95,6 +98,7 @@ export function IssuePanel() {
             <select
               class="field"
               value={issue.status}
+              disabled={!canWrite}
               onChange={(event) =>
                 patchIssue(issue.id, { status: event.currentTarget.value as Status }, true)
               }
@@ -111,6 +115,7 @@ export function IssuePanel() {
             <select
               class="field"
               value={issue.type}
+              disabled={!canWrite}
               onChange={(event) =>
                 patchIssue(issue.id, { type: event.currentTarget.value as IssueType })
               }
@@ -127,6 +132,7 @@ export function IssuePanel() {
             <select
               class="field"
               value={issue.sprint ?? ''}
+              disabled={!canWrite}
               onChange={(event) =>
                 patchIssue(
                   issue.id,
@@ -148,6 +154,7 @@ export function IssuePanel() {
             <select
               class="field"
               value={issue.epic ?? ''}
+              disabled={!canWrite}
               onChange={(event) =>
                 patchIssue(issue.id, {
                   epic: event.currentTarget.value === '' ? null : event.currentTarget.value,
@@ -172,6 +179,7 @@ export function IssuePanel() {
                 step="1"
                 value={issue.points ?? ''}
                 placeholder="—"
+                disabled={!canWrite}
                 onChange={(event) =>
                   patchIssue(issue.id, {
                     points:
@@ -189,6 +197,7 @@ export function IssuePanel() {
             <select
               class="field"
               value={issue.priority === null ? '' : String(issue.priority)}
+              disabled={!canWrite}
               onChange={(event) =>
                 patchIssue(issue.id, {
                   priority:
@@ -213,6 +222,7 @@ export function IssuePanel() {
             list="scrumit-assignees"
             value={issue.assignee ?? ''}
             placeholder="unassigned"
+            disabled={!canWrite}
             onChange={(event) =>
               patchIssue(issue.id, { assignee: event.currentTarget.value || null })
             }
@@ -229,6 +239,7 @@ export function IssuePanel() {
           values={issue.labels}
           placeholder="add a label"
           suggestions={allLabels.value}
+          readOnly={!canWrite}
           onChange={(labels) => patchIssue(issue.id, { labels })}
         />
 
@@ -237,6 +248,7 @@ export function IssuePanel() {
           values={issue.blockedBy}
           placeholder="issue id"
           suggestions={issueIds.value.filter((id) => id !== issue.id)}
+          readOnly={!canWrite}
           onChange={(blockedBy) => patchIssue(issue.id, { blockedBy })}
         />
 
@@ -244,6 +256,7 @@ export function IssuePanel() {
           label="Links"
           values={issue.links}
           placeholder="https://…"
+          readOnly={!canWrite}
           onChange={(links) => patchIssue(issue.id, { links })}
           asLink
         />
@@ -277,6 +290,7 @@ export function IssuePanel() {
               class="field min-h-[220px] flex-1 font-mono text-[12.5px] leading-relaxed"
               value={issue.body}
               placeholder="## Context&#10;&#10;## Acceptance criteria&#10;&#10;- [ ] …"
+              readOnly={!canWrite}
               onInput={(event) => patchIssue(issue.id, { body: event.currentTarget.value })}
             />
           ) : (
@@ -296,14 +310,16 @@ export function IssuePanel() {
         <span class="num shrink-0 text-[10.5px] text-ink-4">
           {humanDate(issue.created)}
         </span>
-        <Btn
-          variant="ghost"
-          icon
-          title="Delete this issue"
-          onClick={() => setConfirming(true)}
-        >
-          <IconTrash size={13} />
-        </Btn>
+        {canWrite ? (
+          <Btn
+            variant="ghost"
+            icon
+            title="Delete this issue"
+            onClick={() => setConfirming(true)}
+          >
+            <IconTrash size={13} />
+          </Btn>
+        ) : null}
       </footer>
 
       {confirming ? (
@@ -354,6 +370,7 @@ function TokenEditor({
   suggestions,
   onChange,
   asLink = false,
+  readOnly = false,
 }: {
   label: string
   values: string[]
@@ -361,6 +378,7 @@ function TokenEditor({
   suggestions?: string[]
   onChange: (next: string[]) => void
   asLink?: boolean
+  readOnly?: boolean
 }) {
   const [entry, setEntry] = useState('')
 
@@ -392,16 +410,19 @@ function TokenEditor({
             ) : (
               value
             )}
-            <button
-              type="button"
-              class="text-ink-4 hover:text-signal"
-              aria-label={`Remove ${value}`}
-              onClick={() => onChange(values.filter((item) => item !== value))}
-            >
-              <IconX size={10} />
-            </button>
+            {readOnly ? null : (
+              <button
+                type="button"
+                class="text-ink-4 hover:text-signal"
+                aria-label={`Remove ${value}`}
+                onClick={() => onChange(values.filter((item) => item !== value))}
+              >
+                <IconX size={10} />
+              </button>
+            )}
           </Chip>
         ))}
+        {readOnly ? null : (
         <input
           class="inset min-w-[110px] flex-1 px-1.5 py-[3px] text-[12px] outline-none placeholder:text-ink-4 focus:border-accent"
           list={suggestions ? `scrumit-${label}` : undefined}
@@ -419,6 +440,7 @@ function TokenEditor({
           }}
           onBlur={(event) => commit(event.currentTarget.value)}
         />
+        )}
         {suggestions ? (
           <datalist id={`scrumit-${label}`}>
             {suggestions

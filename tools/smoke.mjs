@@ -515,31 +515,70 @@ try {
    * mutation before it touches the board, with one explanation.
    * ---------------------------------------------------------------------- */
 
-  await step('refuse every write on a read-only source', async () => {
+  await step('make read-only legible and inert', async () => {
     await page.evaluate(() => window.__scrumit.openReadOnlyFake())
-    await waitForShell()
+    await page.waitForSelector('nav[aria-label="Views"]', { timeout: 12_000 })
     await waitForText('READONLY-1', 12_000)
 
+    const chrome = await page.evaluate(() => ({
+      composers: [...document.querySelectorAll('button')].filter((button) =>
+        /Add to/i.test(button.textContent ?? ''),
+      ).length,
+      grips: document.querySelectorAll('[data-grip]').length,
+      banner: document.body.innerText.includes('Read-only'),
+    }))
+    if (chrome.composers > 0) {
+      problems.push(`read-only board still offers ${chrome.composers} composer(s)`)
+    }
+    if (!chrome.banner) problems.push('the read-only banner is missing')
+
     const before = await page.evaluate(() => window.__scrumit.stats().writeAttempts)
-    await clickByText('button', 'Add to')
-    await page.waitForSelector('textarea[placeholder="What needs doing?"]', { timeout: 5000 })
-    await page.click('textarea[placeholder="What needs doing?"]')
-    await page.keyboard.type('should not be written')
-    await page.keyboard.press('Enter')
-    await waitForText('read-only', 8000)
-    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    // Sortable must be disabled, not merely hidden: a drag changes nothing.
+    const geometry = await page.evaluate(() => {
+      const rect = (element) => {
+        const r = element.getBoundingClientRect()
+        return { x: r.x, y: r.y, w: r.width, h: r.height }
+      }
+      return {
+        card: rect(document.querySelector('[data-status="todo"] .card')),
+        doing: rect(document.querySelector('[data-status="doing"]')),
+      }
+    })
+    await page.mouse.move(geometry.card.x + geometry.card.w / 2, geometry.card.y + 14)
+    await page.mouse.down()
+    await page.mouse.move(
+      geometry.doing.x + geometry.doing.w / 2,
+      geometry.doing.y + 60,
+      { steps: 15 },
+    )
+    await page.mouse.up()
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    const moved = await page.evaluate(
+      () => !!document.querySelector('[data-status="doing"] [data-issue="READONLY-1"]'),
+    )
+    if (moved) problems.push('a read-only board moved a card on drag')
+
+    // The panel is readable but not editable, and Delete is gone.
+    await clickByText('.card', 'READONLY-1')
+    await waitForText('Assignee', 8000)
+    const panel = await page.evaluate(() => {
+      const title = document.querySelector('textarea[aria-label="Title"]')
+      return {
+        titleLocked: title?.readOnly === true || title?.disabled === true,
+        deletes: document.querySelectorAll('button[title="Delete this issue"]').length,
+      }
+    })
+    if (!panel.titleLocked) problems.push('the read-only panel title is editable')
+    if (panel.deletes > 0) problems.push('the read-only panel still offers Delete')
+    await page.keyboard.press('Escape')
+    await new Promise((resolve) => setTimeout(resolve, 200))
 
     const after = await page.evaluate(() => window.__scrumit.stats().writeAttempts)
     if (after !== before) {
       problems.push(`a read-only source was written ${after - before} time(s)`)
     }
-    const cards = await page.evaluate(() =>
-      [...document.querySelectorAll('.card')].map((card) => card.textContent ?? ''),
-    )
-    if (cards.some((card) => card.includes('should not be written'))) {
-      problems.push('a refused card appeared on the board')
-    }
-    await shot('22-read-only-refused')
+    await shot('22-read-only')
   })
 } catch (error) {
   problems.push(`fatal: ${error.message}`)
