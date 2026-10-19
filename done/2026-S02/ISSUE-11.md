@@ -23,12 +23,12 @@ contract, maps server events into the existing `WatchEvent`, and turns a stale
 
 ## Acceptance criteria
 
-- [ ] `HttpSource` implements list, read, write, remove, exists, permission, and watch.
-- [ ] `list()` records ETags without reading every file; writes send the remembered base.
-- [ ] A stale base throws `ConflictError` with the current text and fresh ETag.
-- [ ] Watching uses `fetch()` streaming so the bearer token never appears in a URL.
-- [ ] A lost server becomes a typed error and one legible toast, not a crash.
-- [ ] `'http'` is added to the source and repo kind unions.
+- [x] `HttpSource` implements list, read, write, remove, exists, permission, and watch.
+- [x] `list()` records ETags without reading every file; writes send the remembered base.
+- [x] A stale base throws `ConflictError` with the current text and fresh ETag.
+- [x] Watching uses `fetch()` streaming so the bearer token never appears in a URL.
+- [x] A lost server becomes a typed error and one legible toast, not a crash.
+- [x] `'http'` is added to the source and repo kind unions.
 
 ## Delivery
 
