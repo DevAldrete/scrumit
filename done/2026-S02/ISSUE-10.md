@@ -23,13 +23,13 @@ escapes.
 
 ## Acceptance criteria
 
-- [ ] `server/index.mjs`, `server/fs-api.mjs`, and `server/security.mjs` use only Node built-ins.
-- [ ] It binds to `127.0.0.1` only and serves `dist/` and the API from one origin.
-- [ ] A generated bearer token is required and printed once.
-- [ ] Path containment rejects absolute paths, `..`, and symlink escapes.
-- [ ] Only `*.md` and `.scrumit/config.yaml` are writable; `.git/HEAD` is read-only.
-- [ ] Writes are atomic and return an ETag.
-- [ ] `GET /api/health`, `/api/files`, `/api/file`, `PUT`, `DELETE` and SSE events are implemented.
+- [x] `server/index.mjs`, `server/fs-api.mjs`, and `server/security.mjs` use only Node built-ins.
+- [x] It binds to `127.0.0.1` only and serves `dist/` and the API from one origin.
+- [x] A generated bearer token is required and printed once.
+- [x] Path containment rejects absolute paths, `..`, and symlink escapes.
+- [x] Only `*.md` and `.scrumit/config.yaml` are writable; `.git/HEAD` is read-only.
+- [x] Writes are atomic and return an ETag.
+- [x] `GET /api/health`, `/api/files`, `/api/file`, `PUT`, `DELETE` and SSE events are implemented.
 
 ## Delivery
 
