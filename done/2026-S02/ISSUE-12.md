@@ -23,11 +23,11 @@ be right.
 
 ## Acceptance criteria
 
-- [ ] Boot probes `/api/health` with a 600 ms timeout and offers the server path on Welcome.
-- [ ] The token is stored per origin; the first URL can carry it and the app cleans the address bar.
-- [ ] A 409 keeps the user's text, marks the card, and offers Keep mine / Take theirs.
-- [ ] The watcher does not overwrite a conflicted card.
-- [ ] A stopped server produces one toast and legible write failures.
+- [x] Boot probes `/api/health` and offers the server path on Welcome.
+- [x] The token is stored per origin; the first URL can carry it and the app cleans the address bar.
+- [x] A 409 keeps the user's text, marks the card, and offers Keep mine / Take theirs.
+- [x] The watcher does not overwrite a conflicted card.
+- [x] A stopped server produces one toast and legible write failures.
 
 ## Delivery
 
