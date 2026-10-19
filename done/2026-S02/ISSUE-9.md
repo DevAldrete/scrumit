@@ -1,7 +1,7 @@
 ---
 id: ISSUE-9
 title: Add the adapter conformance suite
-status: doing
+status: done
 type: story
 epic: EPIC-02
 sprint: 2026-S02
@@ -10,7 +10,7 @@ priority: 1
 labels: [testing, source]
 created: 2026-10-19
 updated: 2026-10-19
-order: 10
+order: 130
 blocked_by: [ISSUE-11]
 assignee: agent-opencode
 ---
@@ -26,3 +26,9 @@ read-only stops "works in Chrome" from being the definition of done.
 - [ ] It runs against the FSA mock, a live HTTP server on an ephemeral port, and a read-only file map.
 - [ ] `watch` is asserted to work or be absent, never silently ignored.
 - [ ] `npm run check` stays green with no test weakened.
+
+## Delivery
+
+- Commits: `68ff669`, `bf67802`
+- Summary: One RepoSource contract across FSA, read-only, and HTTP
+- Checks: npm run check (122 tests)
