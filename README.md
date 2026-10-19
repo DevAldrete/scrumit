@@ -59,6 +59,30 @@ edits survive a reload.
 npm run build && npm run preview
 ```
 
+### Browser support, measured
+
+Browser support moves, so it is measured rather than assumed:
+
+```sh
+npx playwright install chromium firefox webkit
+npm run probe
+```
+
+The current result on this machine:
+
+| Capability | Chromium | Firefox | WebKit |
+| --- | --- | --- | --- |
+| `showDirectoryPicker()` | yes | no | no |
+| `FileSystemObserver` | yes | no | no |
+| OPFS | yes | yes | yes |
+| `getAsFileSystemHandle()` | yes | no | no |
+| `color-mix()` | yes | yes | yes |
+| handle cloneable into IndexedDB | yes | n/a | **no** |
+
+The last row is why adding a repository no longer throws in Safari: the handle is
+dropped and the cached board stays readable. Writable folders in Firefox and
+Safari are the sidecar's job, not a polyfill's.
+
 ## Letting an agent run the board
 
 Every card is a file, so an agent that can read and write markdown can run this

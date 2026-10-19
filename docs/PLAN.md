@@ -57,6 +57,13 @@ Run it against Chromium (already cached), plus Firefox and WebKit after
 `npx playwright install firefox webkit`. Note in the PR what you measured; the
 rest of this plan assumes the table above and should be corrected if it is wrong.
 
+**Measured 2026-10-19** with `npm run probe` (Playwright Chromium, Firefox 157,
+WebKit 27.2): the table above is accurate. Both Firefox and WebKit report OPFS
+and `color-mix`; neither exposes `showDirectoryPicker`, `FileSystemObserver`, or
+`getAsFileSystemHandle`. WebKit additionally refuses to structured-clone a
+directory handle into IndexedDB — which is the `0a` failure this plan predicted,
+and it is now handled by dropping the handle and keeping the cached board.
+
 ---
 
 ## 2. The decision: three tiers, one interface

@@ -21,6 +21,7 @@
     "cli": "node cli/scrumit.mjs",
     "test": "node --test \"tools/*.test.mjs\"",
     "smoke": "node tools/smoke.mjs",
+    "probe": "node tools/probe-support.mjs",
     "check": "tsc -b && node --test \"tools/*.test.mjs\""
   },
   "dependencies": {
