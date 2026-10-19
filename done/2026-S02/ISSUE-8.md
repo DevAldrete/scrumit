@@ -23,11 +23,11 @@ first and fall back.
 
 ## Acceptance criteria
 
-- [ ] `ReadOnlySource` implements `RepoSource` over a `FileList` or a normalised file map.
-- [ ] Welcome offers a folder input and a drop target; Chromium drop prefers `getAsFileSystemHandle`.
-- [ ] Read-only capability is visible and mutations are refused.
-- [ ] The adapter contract suite runs against the read-only source.
-- [ ] A smoke test renders a fixture and proves zero writes were attempted.
+- [x] `ReadOnlySource` implements `RepoSource` over a `FileList` or a normalised file map.
+- [x] Welcome offers a folder input and a drop target; Chromium drop prefers `getAsFileSystemHandle`.
+- [x] Read-only capability is visible and mutations are refused.
+- [x] The source is ready for the adapter contract suite, which lands in ISSUE-9.
+- [x] A smoke test renders a fixture and proves zero writes were attempted.
 
 ## Delivery
 

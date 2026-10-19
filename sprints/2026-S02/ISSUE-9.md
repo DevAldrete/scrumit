@@ -11,6 +11,7 @@ labels: [testing, source]
 created: 2026-10-19
 updated: 2026-10-19
 order: 20
+blocked_by: [ISSUE-11]
 ---
 
 ## Context
