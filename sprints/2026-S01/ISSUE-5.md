@@ -1,7 +1,7 @@
 ---
 id: ISSUE-5
 title: Make read-only mode legible in the UI
-status: todo
+status: doing
 type: story
 epic: EPIC-02
 sprint: 2026-S01
@@ -10,8 +10,9 @@ priority: 2
 labels: [ui, browser]
 created: 2026-10-19
 updated: 2026-10-19
-order: 50
+order: 10
 blocked_by: [ISSUE-4]
+assignee: agent-opencode
 ---
 
 ## Context
