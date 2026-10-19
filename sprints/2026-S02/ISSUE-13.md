@@ -1,7 +1,7 @@
 ---
 id: ISSUE-13
 title: Run the sidecar browser smoke matrix
-status: todo
+status: doing
 type: story
 epic: EPIC-02
 sprint: 2026-S02
@@ -10,8 +10,9 @@ priority: 2
 labels: [testing, browser]
 created: 2026-10-19
 updated: 2026-10-19
-order: 60
+order: 10
 blocked_by: [ISSUE-11, ISSUE-12]
+assignee: agent-opencode
 ---
 
 ## Context
