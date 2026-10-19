@@ -31,12 +31,18 @@ import { personHue, todayISO } from './format.ts'
 import type {
   BoardColumnSpec,
   BoardConfig,
+  Capabilities,
   Epic,
   Issue,
   RepoSnapshot,
   Sprint,
   Status,
 } from './model.ts'
+import {
+  RESTRICTIVE_CAPABILITIES,
+  resolveCapabilities,
+  writeRefusalMessage,
+} from './capabilities.ts'
 import { boardColumns, compareOrder } from './metrics.ts'
 import { epicPath, issuePath, sprintPath } from './paths.ts'
 import {
@@ -76,6 +82,14 @@ export const permission = signal<PermissionState>('granted')
  * cached board is showing and the folder must be reopened to write.
  */
 export const handleLost = signal(false)
+
+/** What the current source declares it can do, before permission is applied. */
+export const sourceCapabilities = signal<Capabilities>({ ...RESTRICTIVE_CAPABILITIES })
+
+/** The one answer the UI and every mutation consult. */
+export const capabilities = computed<Capabilities>(() =>
+  resolveCapabilities(sourceCapabilities.value, permission.value),
+)
 export const loadState = signal<LoadState>('welcome')
 export const busy = signal(false)
 export const saving = signal(false)
@@ -212,6 +226,22 @@ export const filterCount = computed(() => {
 /* -------------------------------------------------------------------------- */
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null
+
+let lastRefusalAt = 0
+
+/**
+ * Refuse a write once, with the reason that matches the tier. Every mutation
+ * calls this before it touches optimistic state, so a read-only repository never
+ * shows a change it cannot save.
+ */
+export function refuseWrite(): false {
+  const now = Date.now()
+  if (now - lastRefusalAt > 4000) {
+    lastRefusalAt = now
+    notify(writeRefusalMessage(capabilities.value, permission.value), 'error')
+  }
+  return false
+}
 
 export function notify(
   message: string,
@@ -476,6 +506,9 @@ export async function persistIssue(id: string): Promise<void> {
   const src = source
   const issue = issues.value.find((i) => i.id === id)
   if (!src || !issue) return
+  // The entry points explain a refusal; this is the backstop for a source that
+  // lost permission while a debounced write was pending.
+  if (!capabilities.value.canWrite) return
 
   const previousPath = issue.path
   const path = issuePath(issue, config.value.dirs)
@@ -536,15 +569,42 @@ export async function refreshRepos(): Promise<void> {
 export interface OpenOptions {
   /** True when the call is inside a click handler and may raise a prompt. */
   gesture?: boolean
+  /** Supply the source directly (read-only fixtures and tests). */
+  source?: RepoSource
+  /** Do not register this repo in the switcher or preferences. */
+  transient?: boolean
 }
 
 export async function openRepo(record: RepoRecord, options: OpenOptions = {}): Promise<void> {
   loadState.value = 'loading'
   errorMessage.value = null
   try {
+    if (options.source) {
+      // Read-only fixtures and tests hand scrumit a source directly. It is not
+      // registered in the switcher unless the caller asks for that.
+      const supplied = options.source
+      source = supplied
+      sourceCapabilities.value = supplied.capabilities
+      permission.value = 'granted'
+      handleLost.value = false
+      activeRepo.value = record
+      await rescan()
+      drafts.value = []
+      if (!options.transient) {
+        const updated = { ...record, lastOpenedAt: Date.now() }
+        activeRepo.value = updated
+        await putRepo(updated)
+        await setPref('activeRepoId', record.id)
+        await refreshRepos()
+        await startWatching()
+      }
+      return
+    }
+
     let next: RepoSource
     if (record.kind === 'demo') {
       next = await DemoSource.load()
+      sourceCapabilities.value = next.capabilities
       permission.value = 'granted'
     } else {
       if (!record.handle) {
@@ -552,6 +612,12 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
         // read-only, or send the user back to pick the folder again.
         stopWatching()
         source = null
+        sourceCapabilities.value = {
+          canWrite: false,
+          canWatch: false,
+          access: 'handle',
+          git: 'branch',
+        }
         const cached = await readSnapshot(record.id)
         if (cached) {
           handleLost.value = true
@@ -568,6 +634,7 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
         return
       }
       const fsa = new FsaSource(record.handle, record.path || record.name)
+      sourceCapabilities.value = fsa.capabilities
       let state = await fsa.permission()
       if (state !== 'granted' && options.gesture) state = await fsa.request()
       permission.value = state
@@ -586,6 +653,7 @@ export async function openRepo(record: RepoRecord, options: OpenOptions = {}): P
     }
 
     source = next
+    sourceCapabilities.value = next.capabilities
     activeRepo.value = record
     permission.value = 'granted'
     handleLost.value = false
@@ -721,6 +789,10 @@ export async function openDemo(): Promise<void> {
 }
 
 export async function resetDemo(): Promise<void> {
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   await DemoSource.reset()
   await rescan()
   notify('Demo repo restored to its original state.', 'ok')
@@ -730,6 +802,7 @@ export async function closeRepo(): Promise<void> {
   await flush()
   stopWatching()
   source = null
+  sourceCapabilities.value = { ...RESTRICTIVE_CAPABILITIES }
   handleLost.value = false
   activeRepo.value = null
   issues.value = []
@@ -756,6 +829,10 @@ export async function writeAgentGuide(): Promise<void> {
   const src = source
   const repo = activeRepo.value
   if (!src || !repo) return
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   try {
     const guide = await buildAgentGuide({
       repoName: repo.name,
@@ -782,8 +859,8 @@ export async function writeAgentSkill(targetDir = '.skills'): Promise<void> {
   const src = source
   const repo = activeRepo.value
   if (!src || !repo) return
-  if (permission.value !== 'granted') {
-    notify('scrumit cannot write to this folder until you grant access.', 'error')
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
     return
   }
   const base = targetDir.replace(/\/+$/, '')
@@ -808,6 +885,10 @@ export async function writeAgentSkill(targetDir = '.skills'): Promise<void> {
 export async function initialiseRepo(): Promise<void> {
   const src = source
   if (!src) return
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   try {
     await src.write(CONFIG_PATH, serializeConfig({ ...defaultConfig(), project: activeRepo.value?.name ?? '' }))
     noteSelfWrite(CONFIG_PATH)
@@ -847,6 +928,10 @@ export interface NewIssueInput {
 export async function createIssue(input: NewIssueInput): Promise<Issue | null> {
   const src = source
   if (!src) return null
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return null
+  }
   const id = newIssueId(
     issues.value.map((i) => i.id),
     config.value.project,
@@ -886,6 +971,10 @@ export async function createIssue(input: NewIssueInput): Promise<Issue | null> {
 }
 
 export function patchIssue(id: string, patch: Partial<Issue>, immediate = false): void {
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   const existing = issues.value.find((i) => i.id === id)
   if (!existing) return
   const next: Issue = { ...existing, ...patch, updated: todayISO() }
@@ -895,6 +984,10 @@ export function patchIssue(id: string, patch: Partial<Issue>, immediate = false)
 }
 
 export async function deleteIssue(id: string): Promise<void> {
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   const issue = issues.value.find((i) => i.id === id)
   if (!issue) return
   if (issue.path && source) {
@@ -918,6 +1011,10 @@ export async function deleteIssue(id: string): Promise<void> {
  * the column.
  */
 export async function moveIssue(id: string, toStatus: Status, toIndex: number): Promise<void> {
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   const moving = issues.value.find((i) => i.id === id)
   if (!moving) return
 
@@ -970,11 +1067,19 @@ export async function moveIssue(id: string, toStatus: Status, toIndex: number): 
 /* -------------------------------------------------------------------------- */
 
 export function patchConfig(patch: Partial<BoardConfig>): void {
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   config.value = { ...config.value, ...patch }
   void persistConfig()
 }
 
 export function patchColumn(id: Status, patch: Partial<BoardColumnSpec>): void {
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   config.value = {
     ...config.value,
     columns: config.value.columns.map((column) =>
@@ -985,6 +1090,10 @@ export function patchColumn(id: Status, patch: Partial<BoardColumnSpec>): void {
 }
 
 export function moveColumn(id: Status, direction: -1 | 1): void {
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   const columns = config.value.columns.slice()
   const index = columns.findIndex((column) => column.id === id)
   const target = index + direction
@@ -998,6 +1107,7 @@ export function moveColumn(id: Status, direction: -1 | 1): void {
 export async function persistConfig(): Promise<void> {
   const src = source
   if (!src) return
+  if (!capabilities.value.canWrite) return
   markSaving(1)
   try {
     await src.write(CONFIG_PATH, serializeConfig(config.value))
@@ -1016,6 +1126,10 @@ export async function persistConfig(): Promise<void> {
 export async function createEpic(title: string): Promise<Epic | null> {
   const src = source
   if (!src) return null
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return null
+  }
   const epic: Epic = {
     id: newEpicId(epics.value.map((e) => e.id)),
     title,
@@ -1041,6 +1155,10 @@ export async function createEpic(title: string): Promise<Epic | null> {
 }
 
 export function patchEpic(id: string, patch: Partial<Epic>): void {
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   const existing = epics.value.find((e) => e.id === id)
   if (!existing) return
   const next = { ...existing, ...patch }
@@ -1051,6 +1169,7 @@ export function patchEpic(id: string, patch: Partial<Epic>): void {
 export async function persistEpic(epic: Epic): Promise<void> {
   const src = source
   if (!src) return
+  if (!capabilities.value.canWrite) return
   const path = epicPath(epic, config.value.dirs)
   markSaving(1)
   try {
@@ -1074,6 +1193,10 @@ export async function persistEpic(epic: Epic): Promise<void> {
 }
 
 export function patchSprint(id: string, patch: Partial<Sprint>): void {
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   const existing = sprints.value.find((s) => s.id === id)
   if (!existing) return
   const next = { ...existing, ...patch }
@@ -1084,6 +1207,7 @@ export function patchSprint(id: string, patch: Partial<Sprint>): void {
 export async function persistSprint(sprint: Sprint): Promise<void> {
   const src = source
   if (!src) return
+  if (!capabilities.value.canWrite) return
   const path = sprintPath(sprint, config.value.dirs)
   markSaving(1)
   try {
@@ -1102,6 +1226,10 @@ export async function persistSprint(sprint: Sprint): Promise<void> {
 export async function createSprint(): Promise<Sprint | null> {
   const src = source
   if (!src) return null
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return null
+  }
   const year = new Date().getFullYear()
   let n = 1
   while (sprints.value.some((s) => s.id === `${year}-S${String(n).padStart(2, '0')}`)) n++
@@ -1136,6 +1264,10 @@ export async function createSprint(): Promise<Sprint | null> {
 }
 
 export async function assignToSprint(issueIds: string[], sprintId: string | null): Promise<void> {
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   for (const id of issueIds) patchIssue(id, { sprint: sprintId }, true)
   await Promise.all(issueIds.map((id) => persistIssue(id)))
   notify(
@@ -1150,6 +1282,10 @@ export async function setStatuses(
   ids: string[],
   status: Status,
 ): Promise<void> {
+  if (!capabilities.value.canWrite) {
+    refuseWrite()
+    return
+  }
   for (const id of ids) patchIssue(id, { status, order: nextOrder(status, id) }, true)
   await Promise.all(ids.map((id) => persistIssue(id)))
 }
@@ -1239,6 +1375,12 @@ export async function bootstrap(): Promise<void> {
     if (cached) {
       handleLost.value = true
       permission.value = 'denied'
+      sourceCapabilities.value = {
+        canWrite: false,
+        canWatch: false,
+        access: 'handle',
+        git: 'branch',
+      }
       activeRepo.value = { ...record, handlePersisted: false }
       applySnapshot(cached)
       loadState.value = 'ready'
@@ -1251,6 +1393,7 @@ export async function bootstrap(): Promise<void> {
   else {
     handleLost.value = false
     permission.value = state
+    sourceCapabilities.value = fsa.capabilities
     activeRepo.value = record
     const cached = await readSnapshot(record.id)
     if (cached) {

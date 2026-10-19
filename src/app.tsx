@@ -23,7 +23,8 @@ import {
   view,
   watching,
 } from './lib/store.ts'
-import { db } from './lib/db.ts'
+import { db, type RepoRecord } from './lib/db.ts'
+import type { RepoSource } from './lib/source.ts'
 import { Backlog } from './ui/Backlog.tsx'
 import { Board } from './ui/Board.tsx'
 import { CommandPalette } from './ui/CommandPalette.tsx'
@@ -38,11 +39,55 @@ import { Btn } from './ui/primitives.tsx'
 import { IconRefresh, IconWarn, IconX } from './ui/icons.tsx'
 import { Welcome } from './ui/Welcome.tsx'
 
+/**
+ * A tiny read-only repository used by the smoke suite to prove that a source
+ * with `canWrite: false` refuses every mutation. It is inside the DEV guard and
+ * is dropped from production bundles.
+ */
+function makeReadOnlyFixture(): { source: RepoSource; writeAttempts: () => number } {
+  const files = new Map<string, string>([
+    ['.scrumit/config.yaml', 'version: 1\nproject: Read-only fixture\n'],
+    [
+      'sprints/2026-S01/sprint.md',
+      '---\nid: 2026-S01\nname: Sprint 1\nstate: active\n---\n\nFixture sprint.\n',
+    ],
+    [
+      'sprints/2026-S01/READONLY-1.md',
+      '---\nid: READONLY-1\ntitle: Only the file can change\nstatus: todo\ntype: story\nsprint: 2026-S01\norder: 10\ncreated: 2026-10-19\nupdated: 2026-10-19\n---\n\n## Context\n\nThis fixture refuses every write.\n',
+    ],
+  ])
+  let attempts = 0
+  const refuse = async (): Promise<never> => {
+    attempts += 1
+    throw new Error('read-only fixture refuses writes')
+  }
+  return {
+    source: {
+      kind: 'fsa',
+      label: 'read-only fixture',
+      capabilities: { canWrite: false, canWatch: false, access: 'handle', git: 'none' },
+      list: async () => [...files.keys()],
+      read: async (path) => {
+        const text = files.get(path)
+        if (text === undefined) throw new Error(`Not found: ${path}`)
+        return text
+      },
+      write: refuse,
+      remove: refuse,
+      exists: async (path) => files.has(path),
+      permission: async () => 'denied',
+      request: async () => 'denied',
+    },
+    writeAttempts: () => attempts,
+  }
+}
+
 export function App() {
   useEffect(() => {
     if (import.meta.env.DEV) {
       // Test seam so an automated browser can exercise the File System Access
       // path, which cannot be driven through the native directory picker.
+      let fixture = makeReadOnlyFixture()
       ;(window as unknown as Record<string, unknown>).__scrumit = {
         openHandleAsRepo,
         // Simulate a browser that cannot clone a FileSystemDirectoryHandle:
@@ -52,9 +97,23 @@ export function App() {
             delete record.handle
           })
         },
+        openReadOnlyFake: async () => {
+          fixture = makeReadOnlyFixture()
+          const record: RepoRecord = {
+            id: 'fixture-readonly',
+            name: 'Read-only fixture',
+            path: 'fixture://read-only',
+            kind: 'fsa',
+            color: 1,
+            createdAt: Date.now(),
+            lastOpenedAt: Date.now(),
+          }
+          await openRepo(record, { source: fixture.source, transient: true })
+        },
         stats: () => ({
           externalUpdates: externalUpdates.value,
           watching: watching.value,
+          writeAttempts: fixture.writeAttempts(),
         }),
       }
     }

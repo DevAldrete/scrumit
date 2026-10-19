@@ -588,6 +588,12 @@ const DEMO_PREF = 'demo.files'
 export class DemoSource implements RepoSource {
   readonly kind = 'demo'
   readonly label = 'demo://acme-payments'
+  readonly capabilities = {
+    canWrite: true,
+    canWatch: false,
+    access: 'none',
+    git: 'none',
+  } as const
   #files: Map<string, string>
   #flush: ReturnType<typeof setTimeout> | null = null
 

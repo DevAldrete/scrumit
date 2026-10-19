@@ -1,6 +1,6 @@
 import { defaultConfig, parseConfig } from './config.ts'
 import { classify, isMarkdown, parseEpic, parseIssue, parseSprint } from './artefacts.ts'
-import type { BoardConfig, Epic, Issue, RepoSnapshot, Sprint } from './model.ts'
+import type { BoardConfig, Capabilities, Epic, Issue, RepoSnapshot, Sprint } from './model.ts'
 
 export type PermissionState = 'granted' | 'prompt' | 'denied' | 'unsupported'
 
@@ -19,6 +19,8 @@ export interface RepoSource {
   readonly kind: 'fsa' | 'demo'
   /** Human-readable origin, shown in the repo switcher. */
   readonly label: string
+  /** What this source can actually do. The store gates every write on it. */
+  readonly capabilities: Capabilities
   /** Every file in the repo, as posix-style relative paths. */
   list(): Promise<string[]>
   read(path: string): Promise<string>

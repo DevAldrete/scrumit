@@ -509,6 +509,38 @@ try {
     }
     await shot('21-handle-lost')
   })
+
+  /* ------------------------------------------------------------------------
+   * A source whose capabilities say `canWrite: false` must refuse every
+   * mutation before it touches the board, with one explanation.
+   * ---------------------------------------------------------------------- */
+
+  await step('refuse every write on a read-only source', async () => {
+    await page.evaluate(() => window.__scrumit.openReadOnlyFake())
+    await waitForShell()
+    await waitForText('READONLY-1', 12_000)
+
+    const before = await page.evaluate(() => window.__scrumit.stats().writeAttempts)
+    await clickByText('button', 'Add to')
+    await page.waitForSelector('textarea[placeholder="What needs doing?"]', { timeout: 5000 })
+    await page.click('textarea[placeholder="What needs doing?"]')
+    await page.keyboard.type('should not be written')
+    await page.keyboard.press('Enter')
+    await waitForText('read-only', 8000)
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    const after = await page.evaluate(() => window.__scrumit.stats().writeAttempts)
+    if (after !== before) {
+      problems.push(`a read-only source was written ${after - before} time(s)`)
+    }
+    const cards = await page.evaluate(() =>
+      [...document.querySelectorAll('.card')].map((card) => card.textContent ?? ''),
+    )
+    if (cards.some((card) => card.includes('should not be written'))) {
+      problems.push('a refused card appeared on the board')
+    }
+    await shot('22-read-only-refused')
+  })
 } catch (error) {
   problems.push(`fatal: ${error.message}`)
 } finally {

@@ -116,6 +116,22 @@ export interface RawFile {
   text: string
 }
 
+/**
+ * What a repository source can do, independent of which tier it came from.
+ *
+ * `canWrite` is intrinsic to the source: a read-only folder and a demo repo both
+ * say yes or no here. The store combines it with the browser permission state,
+ * so a writable handle the user has not re-granted is still read-only in
+ * practice.
+ */
+export interface Capabilities {
+  canWrite: boolean
+  canWatch: boolean
+  /** How the folder was obtained. */
+  access: 'handle' | 'http' | 'none'
+  git: 'branch' | 'full' | 'none'
+}
+
 export interface RepoSnapshot {
   repoId: string
   scannedAt: number

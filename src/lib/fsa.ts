@@ -1,3 +1,4 @@
+import type { Capabilities } from './model.ts'
 import {
   IGNORED_DIRS,
   describeError,
@@ -77,11 +78,18 @@ const MAX_FILES = 25_000
 export class FsaSource implements RepoSource {
   readonly kind = 'fsa'
   readonly label: string
+  readonly capabilities: Capabilities
   #root: FileSystemDirectoryHandle
 
   constructor(root: FileSystemDirectoryHandle, label: string) {
     this.#root = root
     this.label = label
+    this.capabilities = {
+      canWrite: true,
+      canWatch: observerSupported(),
+      access: 'handle',
+      git: 'branch',
+    }
   }
 
   get root(): FileSystemDirectoryHandle {
