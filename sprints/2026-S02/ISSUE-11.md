@@ -1,7 +1,7 @@
 ---
 id: ISSUE-11
 title: Implement HttpSource with ETag conflicts and SSE watching
-status: todo
+status: doing
 type: story
 epic: EPIC-02
 sprint: 2026-S02
@@ -10,8 +10,9 @@ priority: 1
 labels: [source, server]
 created: 2026-10-19
 updated: 2026-10-19
-order: 40
+order: 10
 blocked_by: [ISSUE-10]
+assignee: agent-opencode
 ---
 
 ## Context
