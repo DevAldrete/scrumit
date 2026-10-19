@@ -1,7 +1,7 @@
 ---
 id: ISSUE-5
 title: Make read-only mode legible in the UI
-status: doing
+status: done
 type: story
 epic: EPIC-02
 sprint: 2026-S01
@@ -10,7 +10,7 @@ priority: 2
 labels: [ui, browser]
 created: 2026-10-19
 updated: 2026-10-19
-order: 10
+order: 50
 blocked_by: [ISSUE-4]
 assignee: agent-opencode
 ---
@@ -29,3 +29,9 @@ the capability model.
 - [ ] The issue panel fields are `readonly`/`disabled`.
 - [ ] The command palette omits mutating commands.
 - [ ] A smoke test proves a drag moves nothing and no file is written.
+
+## Delivery
+
+- Commits: `b2feef5`, `35ead03`
+- Summary: Read-only UI hides mutators, disables drag, and proves zero writes
+- Checks: npm run check (80 tests), npm run smoke
